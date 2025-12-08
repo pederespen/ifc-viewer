@@ -2,7 +2,7 @@
 
 @layer base {
 	body {
-		@apply overflow-hidden bg-slate-900 text-slate-200;
+		@apply overflow-hidden bg-gray-50 text-gray-900;
 	}
 }
 

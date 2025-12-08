@@ -33,7 +33,7 @@
 		(world.scene as OBC.SimpleScene & { setup: () => void }).setup();
 
 		// Set background color
-		(world.scene.three as THREE.Scene).background = new THREE.Color('#0f172a');
+		(world.scene.three as THREE.Scene).background = new THREE.Color('#f8fafc');
 
 		world.renderer = new OBC.SimpleRenderer(components, container);
 		world.camera = new OBC.SimpleCamera(components);
@@ -217,35 +217,19 @@
 
 <div class="relative flex h-full w-full flex-col">
 	<!-- Header -->
-	<div class="z-10 flex items-center gap-6 border-b border-slate-700 bg-slate-800 px-6 py-4">
-		<h1 class="text-2xl font-semibold text-slate-100">IFC Viewer</h1>
+	<div class="z-10 flex items-center gap-6 border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
 		<button
-			class="flex items-center gap-2 rounded-lg bg-blue-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600"
-			onclick={triggerFileInput}
+			class="cursor-pointer text-2xl font-semibold text-gray-900 transition-colors hover:text-blue-600"
+			onclick={() => window.location.reload()}
 		>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				width="20"
-				height="20"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-			>
-				<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-				<polyline points="17 8 12 3 7 8" />
-				<line x1="12" y1="3" x2="12" y2="15" />
-			</svg>
-			Upload IFC File
+			IFC Viewer
 		</button>
-		<input id="file-input" type="file" accept=".ifc" class="hidden" onchange={handleFileInput} />
 	</div>
+	<input id="file-input" type="file" accept=".ifc" class="hidden" onchange={handleFileInput} />
 
 	<!-- Viewer Area -->
 	<div
-		class="relative flex-1 overflow-hidden transition-colors {isDragging ? 'bg-blue-500/10' : ''}"
+		class="relative flex-1 overflow-hidden transition-all {isDragging ? 'bg-blue-50' : ''}"
 		ondrop={handleDrop}
 		ondragover={handleDragOver}
 		ondragleave={handleDragLeave}
@@ -255,51 +239,54 @@
 		<div bind:this={container} class="h-full w-full"></div>
 
 		{#if !hasModel && !isLoading}
-			<div
-				class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-4 text-slate-500 {isDragging
-					? 'text-blue-500'
-					: ''}"
-			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					width="64"
-					height="64"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="1.5"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					class="transition-opacity {isDragging ? 'opacity-100' : 'opacity-50'}"
+			<div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+				<div
+					class="pointer-events-auto flex h-1/2 w-1/2 cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed transition-all {isDragging
+						? 'border-blue-500 bg-blue-50 text-blue-600'
+						: 'border-gray-300 text-gray-400 hover:border-gray-400 hover:bg-gray-50'}"
+					onclick={triggerFileInput}
 				>
-					<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-					<polyline points="17 8 12 3 7 8" />
-					<line x1="12" y1="3" x2="12" y2="15" />
-				</svg>
-				<p class="text-lg">Drag & drop an IFC file here</p>
-				<p class="text-sm opacity-70">or click the upload button above</p>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="64"
+						height="64"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						class="transition-all"
+					>
+						<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+						<polyline points="17 8 12 3 7 8" />
+						<line x1="12" y1="3" x2="12" y2="15" />
+					</svg>
+					<p class="text-lg font-medium">Drop your IFC file here</p>
+					<p class="text-sm opacity-70">or click to browse</p>
+				</div>
 			</div>
 		{/if}
 
 		{#if isLoading}
 			<div
-				class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-slate-900/80 backdrop-blur-sm"
+				class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-white/90 backdrop-blur-sm"
 			>
 				<div
-					class="h-16 w-16 animate-spin rounded-full border-4 border-slate-600 border-t-blue-500"
+					class="h-16 w-16 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500"
 				></div>
-				<p class="text-lg font-medium text-slate-200">Loading IFC file...</p>
-				<p class="text-sm text-slate-400">This may take a moment</p>
+				<p class="text-lg font-medium text-gray-900">Loading IFC file...</p>
+				<p class="text-sm text-gray-500">This may take a moment</p>
 			</div>
 		{/if}
 
 		{#if error}
 			<div class="animate-fade-in absolute top-4 right-4 z-30 max-w-md">
-				<div class="rounded-lg border border-red-500 bg-red-950/90 p-4 shadow-lg backdrop-blur-sm">
+				<div class="rounded-lg border border-red-200 bg-white p-4 shadow-lg">
 					<div class="flex items-start gap-3">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
-							class="h-5 w-5 flex-shrink-0 text-red-400"
+							class="h-5 w-5 flex-shrink-0 text-red-500"
 							viewBox="0 0 24 24"
 							fill="none"
 							stroke="currentColor"
@@ -310,12 +297,12 @@
 							<line x1="12" y1="16" x2="12.01" y2="16" />
 						</svg>
 						<div class="flex-1">
-							<h3 class="font-semibold text-red-200">Error Loading IFC File</h3>
-							<p class="mt-1 text-sm text-red-300">{error}</p>
+							<h3 class="font-semibold text-red-800">Error Loading IFC File</h3>
+							<p class="mt-1 text-sm text-red-700">{error}</p>
 						</div>
 						<button
 							onclick={() => (error = null)}
-							class="flex-shrink-0 text-red-400 transition-colors hover:text-red-200"
+							class="flex-shrink-0 text-red-400 transition-colors hover:text-red-600"
 							aria-label="Close error"
 						>
 							<svg
