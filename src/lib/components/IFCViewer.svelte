@@ -1,4 +1,5 @@
 <script lang="ts">
+	/* eslint-disable no-unused-vars */
 	import { onMount, onDestroy } from 'svelte';
 	import * as THREE from 'three';
 	import * as OBC from '@thatopen/components';
@@ -6,12 +7,39 @@
 	let container: HTMLDivElement;
 	let components: OBC.Components | null = null;
 	let world: OBC.World | null = null;
-	let isDragging = false;
-	let hasModel = false;
+	let isDragging = $state(false);
+	let hasModel = $state(false);
+	let isLoading = $state(false);
+	let error = $state<string | null>(null);
+	let isDarkMode = $state(false);
 
 	onMount(() => {
+		// Load dark mode preference from localStorage
+		const savedTheme = localStorage.getItem('theme');
+		isDarkMode = savedTheme === 'dark';
+		applyTheme();
 		initViewer();
 	});
+
+	function toggleTheme() {
+		isDarkMode = !isDarkMode;
+		localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+		applyTheme();
+	}
+
+	function applyTheme() {
+		if (isDarkMode) {
+			document.documentElement.classList.add('dark-mode');
+		} else {
+			document.documentElement.classList.remove('dark-mode');
+		}
+		// Update Three.js scene background
+		if (world?.scene) {
+			(world.scene.three as THREE.Scene).background = new THREE.Color(
+				isDarkMode ? '#1a1d23' : '#f0f4f8'
+			);
+		}
+	}
 
 	onDestroy(() => {
 		if (components) {
@@ -27,10 +55,12 @@
 		world = worlds.create<OBC.SimpleScene, OBC.SimpleCamera, OBC.SimpleRenderer>();
 
 		world.scene = new OBC.SimpleScene(components);
-		world.scene.setup();
+		(world.scene as OBC.SimpleScene & { setup: () => void }).setup();
 
-		// Set background color
-		world.scene.three.background = new THREE.Color('#0f172a');
+		// Set background color based on theme
+		(world.scene.three as THREE.Scene).background = new THREE.Color(
+			isDarkMode ? '#1a1d23' : '#f0f4f8'
+		);
 
 		world.renderer = new OBC.SimpleRenderer(components, container);
 		world.camera = new OBC.SimpleCamera(components);
@@ -50,7 +80,7 @@
 			init?: (url: string) => void;
 			list?: {
 				onItemSet?: {
-					add?: (callback: (data: { value: unknown }) => void) => void;
+					add?: (handler: (event: { value: unknown }) => void) => void;
 				};
 			};
 			core?: {
@@ -61,8 +91,8 @@
 		fragments.init?.(workerUrl);
 
 		// Set up event handler for when models are loaded
-		fragments.list?.onItemSet?.add?.(({ value: model }: { value: unknown }) => {
-			const typedModel = model as {
+		fragments.list?.onItemSet?.add?.((event: { value: unknown }) => {
+			const typedModel = event.value as {
 				useCamera?: (camera: unknown) => void;
 				object?: THREE.Object3D;
 			};
@@ -126,11 +156,15 @@
 	async function handleFiles(files: FileList) {
 		const file = files[0];
 		if (!file || !file.name.toLowerCase().endsWith('.ifc')) {
-			alert('Please select an IFC file');
+			error = 'Please select a valid IFC file';
+			setTimeout(() => (error = null), 5000);
 			return;
 		}
 
 		if (!components || !world) return;
+
+		isLoading = true;
+		error = null;
 
 		try {
 			// Clear previous model if any
@@ -168,9 +202,11 @@
 			}
 
 			hasModel = true;
-		} catch (error) {
-			console.error('Error loading IFC file:', error);
-			alert('Error loading IFC file. Please check the console for details.');
+		} catch (err) {
+			console.error('Error loading IFC file:', err);
+			error = err instanceof Error ? err.message : 'Failed to load IFC file. Please try again.';
+		} finally {
+			isLoading = false;
 		}
 	}
 
@@ -206,12 +242,13 @@
 	}
 </script>
 
-<div class="relative flex h-full w-full flex-col">
+<div class="bg-primary text-primary relative flex h-full w-full flex-col">
 	<!-- Header -->
-	<div class="z-10 flex items-center gap-6 border-b border-slate-700 bg-slate-800 px-6 py-4">
-		<h1 class="text-2xl font-semibold text-slate-100">IFC Viewer</h1>
+	<div class="border-primary bg-surface z-10 flex items-center gap-6 border-b px-6 py-4 shadow-sm">
+		<h1 class="text-2xl font-semibold">IFC Viewer</h1>
+
 		<button
-			class="flex items-center gap-2 rounded-lg bg-blue-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600"
+			class="bg-accent-primary hover:bg-accent-hover flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:shadow-md active:scale-95"
 			onclick={triggerFileInput}
 		>
 			<svg
@@ -231,12 +268,65 @@
 			</svg>
 			Upload IFC File
 		</button>
+
+		<!-- Spacer -->
+		<div class="flex-1"></div>
+
+		<!-- Theme Toggle -->
+		<button
+			onclick={toggleTheme}
+			class="text-secondary hover:bg-secondary hover:text-primary rounded-lg p-2.5 transition-all hover:shadow-sm active:scale-95"
+			aria-label="Toggle theme"
+		>
+			{#if isDarkMode}
+				<!-- Sun icon (light mode) -->
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="20"
+					height="20"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<circle cx="12" cy="12" r="5" />
+					<line x1="12" y1="1" x2="12" y2="3" />
+					<line x1="12" y1="21" x2="12" y2="23" />
+					<line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+					<line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+					<line x1="1" y1="12" x2="3" y2="12" />
+					<line x1="21" y1="12" x2="23" y2="12" />
+					<line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+					<line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+				</svg>
+			{:else}
+				<!-- Moon icon (dark mode) -->
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="20"
+					height="20"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+				</svg>
+			{/if}
+		</button>
+
 		<input id="file-input" type="file" accept=".ifc" class="hidden" onchange={handleFileInput} />
 	</div>
 
 	<!-- Viewer Area -->
 	<div
-		class="relative flex-1 overflow-hidden transition-colors {isDragging ? 'bg-blue-500/10' : ''}"
+		class="relative flex-1 overflow-hidden transition-colors {isDragging
+			? 'bg-accent-primary/10'
+			: ''}"
 		ondrop={handleDrop}
 		ondragover={handleDragOver}
 		ondragleave={handleDragLeave}
@@ -245,10 +335,10 @@
 	>
 		<div bind:this={container} class="h-full w-full"></div>
 
-		{#if !hasModel}
+		{#if !hasModel && !isLoading}
 			<div
-				class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-4 text-slate-500 {isDragging
-					? 'text-blue-500'
+				class="text-secondary pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-4 {isDragging
+					? 'text-accent-primary'
 					: ''}"
 			>
 				<svg
@@ -269,6 +359,60 @@
 				</svg>
 				<p class="text-lg">Drag & drop an IFC file here</p>
 				<p class="text-sm opacity-70">or click the upload button above</p>
+			</div>
+		{/if}
+
+		{#if isLoading}
+			<div
+				class="bg-primary/80 absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 backdrop-blur-sm"
+			>
+				<div
+					class="border-secondary border-t-accent-primary h-16 w-16 animate-spin rounded-full border-4"
+				></div>
+				<p class="text-primary text-lg font-medium">Loading IFC file...</p>
+				<p class="text-secondary text-sm">This may take a moment</p>
+			</div>
+		{/if}
+
+		{#if error}
+			<div class="animate-fade-in absolute top-4 right-4 z-30 max-w-md">
+				<div class="rounded-lg border border-red-500 bg-red-950/90 p-4 shadow-lg backdrop-blur-sm">
+					<div class="flex items-start gap-3">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-5 w-5 flex-shrink-0 text-red-400"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<circle cx="12" cy="12" r="10" />
+							<line x1="12" y1="8" x2="12" y2="12" />
+							<line x1="12" y1="16" x2="12.01" y2="16" />
+						</svg>
+						<div class="flex-1">
+							<h3 class="font-semibold text-red-200">Error Loading IFC File</h3>
+							<p class="mt-1 text-sm text-red-300">{error}</p>
+						</div>
+						<button
+							onclick={() => (error = null)}
+							class="flex-shrink-0 text-red-400 transition-all hover:scale-110 hover:text-red-200 active:scale-95"
+							aria-label="Close error"
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-5 w-5"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+							>
+								<line x1="18" y1="6" x2="6" y2="18" />
+								<line x1="6" y1="6" x2="18" y2="18" />
+							</svg>
+						</button>
+					</div>
+				</div>
 			</div>
 		{/if}
 	</div>
