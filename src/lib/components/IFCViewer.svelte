@@ -147,20 +147,22 @@
 		// Configure colors and settings
 		highlighter.zoomToSelection = false;
 
-		// Configure hover style (light blue)
+		// Configure hover style - semi-transparent darker blue that shines through other geometry
 		highlighter.styles.set('hover', {
-			color: new THREE.Color(0xbfdbfe),
-			opacity: 0.6,
+			color: new THREE.Color(0x6366f1), // Indigo/purple-blue
+			opacity: 0.4,
 			transparent: true,
-			renderedFaces: 0
+			renderedFaces: 1, // TWO = 1 for both sides
+			depthTest: false // Render on top of everything (x-ray effect)
 		});
 
 		// Configure selection style (solid blue)
 		highlighter.styles.set('select', {
 			color: new THREE.Color(0x3b82f6),
-			opacity: 0.8,
+			opacity: 0.6,
 			transparent: true,
-			renderedFaces: 0
+			renderedFaces: 1,
+			depthTest: false // Also render on top for selection
 		});
 
 		// Setup selection event listener
@@ -356,12 +358,22 @@
 				// Collect all expressIDs from this node and its children
 				const ids = collectExpressIDs(item);
 				if (ids.length > 0) {
-					const modelName = Object.keys((components.get(OBC.FragmentsManager) as any).list)[0];
-					(highlighter as any).highlight('hover', new Map([[modelName, new Set(ids)]]));
+					// Get the model name from fragments list
+					const fragments = components.get(OBC.FragmentsManager);
+					const fragmentsList = (fragments as any).list;
+					const modelName = fragmentsList?.keys().next().value;
+
+					if (modelName) {
+						// ModelIdMap is Record<string, Set<number>>
+						const modelIdMap: OBC.ModelIdMap = {
+							[modelName]: new Set(ids)
+						};
+						highlighter.highlightByID('hover', modelIdMap, true, false);
+					}
 				}
 			}
 		} catch (err) {
-			// Silently handle error
+			console.error('Error highlighting:', err);
 		}
 	}
 
