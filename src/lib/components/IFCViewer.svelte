@@ -21,10 +21,10 @@
 	let ifcTree: TreeNode[] = $state([]);
 	let sidePanelRef: any;
 	let hiddenExpressIDs = $state(new Set<number>());
-	let compassAxes = $state({ 
-		x: { x: 20, y: 0, z: 0 }, 
-		y: { x: 0, y: -20, z: 0 }, 
-		z: { x: 14, y: 14, z: 0 } 
+	let compassAxes = $state({
+		x: { x: 20, y: 0, z: 0 },
+		y: { x: 0, y: -20, z: 0 },
+		z: { x: 14, y: 14, z: 0 }
 	});
 	let initialCameraPosition: THREE.Vector3 | null = null;
 	let initialCameraTarget: THREE.Vector3 | null = null;
@@ -48,13 +48,15 @@
 
 		world.scene = new OBC.SimpleScene(components);
 		// Setup scene with custom lighting config for better material colors
-		(world.scene as OBC.SimpleScene & { 
-			setup: (config?: {
-				backgroundColor?: THREE.Color;
-				directionalLight?: { color?: THREE.Color; intensity?: number; position?: THREE.Vector3 };
-				ambientLight?: { color?: THREE.Color; intensity?: number };
-			}) => void 
-		}).setup({
+		(
+			world.scene as OBC.SimpleScene & {
+				setup: (config?: {
+					backgroundColor?: THREE.Color;
+					directionalLight?: { color?: THREE.Color; intensity?: number; position?: THREE.Vector3 };
+					ambientLight?: { color?: THREE.Color; intensity?: number };
+				}) => void;
+			}
+		).setup({
 			backgroundColor: new THREE.Color('#ffffff'),
 			directionalLight: {
 				intensity: 1.5,
@@ -66,7 +68,7 @@
 		});
 
 		world.renderer = new OBC.SimpleRenderer(components, container);
-		
+
 		world.camera = new OBC.SimpleCamera(components);
 
 		// Update camera aspect ratio on resize to prevent squishing
@@ -266,27 +268,27 @@
 
 	function updateCompassRotation() {
 		if (!world?.camera?.three) return;
-		
+
 		const camera = world.camera.three;
-		
+
 		// Ensure matrix is up to date
 		camera.updateMatrixWorld();
-		
+
 		// Get camera's rotation as a quaternion
 		const quaternion = new THREE.Quaternion();
 		camera.getWorldQuaternion(quaternion);
-		
+
 		// Define world axes
 		const xAxis = new THREE.Vector3(1, 0, 0);
 		const yAxis = new THREE.Vector3(0, 1, 0);
 		const zAxis = new THREE.Vector3(0, 0, 1);
-		
+
 		// Apply inverse camera rotation to get axes in view space
 		const inverseQuat = quaternion.clone().invert();
 		xAxis.applyQuaternion(inverseQuat);
 		yAxis.applyQuaternion(inverseQuat);
 		zAxis.applyQuaternion(inverseQuat);
-		
+
 		// Project to 2D screen space (x stays x, y stays y, z for depth)
 		const scale = 32;
 		compassAxes = {
@@ -302,13 +304,17 @@
 			console.warn('Reset view: initial camera position not set');
 			return;
 		}
-		
+
 		world.camera.controls.setLookAt(
-			initialCameraPosition.x, initialCameraPosition.y, initialCameraPosition.z,
-			initialCameraTarget.x, initialCameraTarget.y, initialCameraTarget.z,
+			initialCameraPosition.x,
+			initialCameraPosition.y,
+			initialCameraPosition.z,
+			initialCameraTarget.x,
+			initialCameraTarget.y,
+			initialCameraTarget.z,
 			false // no animation
 		);
-		
+
 		// Update compass immediately
 		updateCompassRotation();
 	}
@@ -319,28 +325,32 @@
 			console.warn('Recenter view: initial camera target not set');
 			return;
 		}
-		
+
 		// Get current camera direction (but use initial distance for proper zoom)
 		const currentPosition = new THREE.Vector3();
 		const currentTarget = new THREE.Vector3();
 		world.camera.controls.getPosition(currentPosition);
 		world.camera.controls.getTarget(currentTarget);
-		
+
 		// Calculate current direction from target
 		const direction = new THREE.Vector3().subVectors(currentPosition, currentTarget).normalize();
-		
+
 		// Use the initial distance (proper zoom level)
 		const initialDistance = initialCameraPosition.clone().sub(initialCameraTarget).length();
-		
+
 		// Apply current direction but with initial distance to model center
 		const newPosition = initialCameraTarget.clone().add(direction.multiplyScalar(initialDistance));
-		
+
 		world.camera.controls.setLookAt(
-			newPosition.x, newPosition.y, newPosition.z,
-			initialCameraTarget.x, initialCameraTarget.y, initialCameraTarget.z,
+			newPosition.x,
+			newPosition.y,
+			newPosition.z,
+			initialCameraTarget.x,
+			initialCameraTarget.y,
+			initialCameraTarget.z,
 			false // no animation
 		);
-		
+
 		// Update compass immediately
 		updateCompassRotation();
 	}
@@ -396,7 +406,7 @@
 			const maxDim = Math.max(size.x, size.y, size.z);
 			const camera = world.camera.three as THREE.PerspectiveCamera;
 			const fov = camera.fov * (Math.PI / 180);
-			const distance = maxDim / (2 * Math.tan(fov / 2)) * 1.5; // 1.5x padding
+			const distance = (maxDim / (2 * Math.tan(fov / 2))) * 1.5; // 1.5x padding
 
 			// Position camera at a nice angle
 			const offset = new THREE.Vector3(distance * 0.7, distance * 0.5, distance * 0.7);
@@ -408,14 +418,18 @@
 
 			// Set camera position immediately (no animation)
 			world.camera.controls?.setLookAt(
-				cameraPos.x, cameraPos.y, cameraPos.z,
-				center.x, center.y, center.z,
+				cameraPos.x,
+				cameraPos.y,
+				cameraPos.z,
+				center.x,
+				center.y,
+				center.z,
 				false // no animation
 			);
 
 			// Update compass after camera move (with small delay to ensure camera matrix is updated)
 			setTimeout(() => updateCompassRotation(), 50);
-			
+
 			console.log('Camera fitted to model successfully');
 			return true;
 		} catch (err) {
@@ -695,28 +709,6 @@
 			onClearSelection={handleClearSelection}
 		/>
 
-		<!-- Toggle Button (when panel is closed) -->
-		{#if !sidePanelOpen}
-			<button
-				onclick={toggleSidePanel}
-				class="absolute top-4 left-4 z-20 rounded bg-white p-2 shadow-md transition-colors hover:bg-gray-50"
-				aria-label="Open panel"
-			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-6 w-6 text-gray-700"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-				>
-					<line x1="3" y1="12" x2="21" y2="12" />
-					<line x1="3" y1="6" x2="21" y2="6" />
-					<line x1="3" y1="18" x2="21" y2="18" />
-				</svg>
-			</button>
-		{/if}
-
 		<!-- Viewer Area -->
 		<div
 			class="relative flex-1 overflow-hidden transition-all {isDragging ? 'bg-blue-50' : ''}"
@@ -780,72 +772,75 @@
 					{ axis: 'y', color: '#22c55e', data: compassAxes.y },
 					{ axis: 'z', color: '#3b82f6', data: compassAxes.z }
 				].sort((a, b) => a.data.z - b.data.z)}
-				<div class="absolute bottom-4 right-4 z-10 flex flex-col items-center rounded-xl bg-white/90 shadow-lg backdrop-blur-sm border border-gray-200 overflow-hidden">
+				<div
+					class="absolute right-4 bottom-4 z-10 flex flex-col items-center overflow-hidden rounded-xl border border-gray-200 bg-white/90 shadow-lg backdrop-blur-sm"
+				>
 					<!-- 3D Axis Compass -->
 					<div class="p-2">
-						<svg class="w-28 h-28" viewBox="-44 -44 88 88">
+						<svg class="h-28 w-28" viewBox="-44 -44 88 88">
 							<!-- Subtle background circle -->
-							<circle cx="0" cy="0" r="40" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
-							
+							<circle cx="0" cy="0" r="40" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+
 							<!-- Draw axes back-to-front for proper depth -->
 							{#each axes as { axis, color, data }}
 								{@const opacity = 0.5 + (data.z + 1) * 0.25}
 								{@const strokeWidth = 2.5 + (data.z + 1) * 0.5}
 								<!-- Axis line shadow for depth -->
-								<line 
-									x1="1" y1="1" 
-									x2={data.x + 1} y2={data.y + 1} 
+								<line
+									x1="1"
+									y1="1"
+									x2={data.x + 1}
+									y2={data.y + 1}
 									stroke="rgba(0,0,0,0.15)"
 									stroke-width={strokeWidth + 1}
 									stroke-linecap="round"
 								/>
 								<!-- Axis line -->
-								<line 
-									x1="0" y1="0" 
-									x2={data.x} y2={data.y} 
+								<line
+									x1="0"
+									y1="0"
+									x2={data.x}
+									y2={data.y}
 									stroke={color}
 									stroke-width={strokeWidth}
 									stroke-linecap="round"
-									opacity={opacity}
+									{opacity}
 								/>
 								<!-- Circle shadow -->
-								<circle 
-									cx={data.x + 1} cy={data.y + 1} 
+								<circle
+									cx={data.x + 1}
+									cy={data.y + 1}
 									r={8 + (data.z + 1) * 1}
 									fill="rgba(0,0,0,0.15)"
 								/>
 								<!-- Axis end circle -->
-								<circle 
-									cx={data.x} cy={data.y} 
-									r={8 + (data.z + 1) * 1}
-									fill={color}
-									opacity={opacity}
-								/>
+								<circle cx={data.x} cy={data.y} r={8 + (data.z + 1) * 1} fill={color} {opacity} />
 								<!-- Axis label -->
-								<text 
-									x={data.x} y={data.y} 
-									text-anchor="middle" 
+								<text
+									x={data.x}
+									y={data.y}
+									text-anchor="middle"
 									dominant-baseline="central"
-									fill="white" 
+									fill="white"
 									font-size={9 + (data.z + 1) * 0.5}
-									font-weight="bold"
-								>{axis.toUpperCase()}</text>
+									font-weight="bold">{axis.toUpperCase()}</text
+								>
 							{/each}
-							
+
 							<!-- Center point (on top) -->
-							<circle cx="0" cy="0" r="4" fill="#374151" stroke="white" stroke-width="1"/>
+							<circle cx="0" cy="0" r="4" fill="#374151" stroke="white" stroke-width="1" />
 						</svg>
 					</div>
-					
+
 					<!-- Separator -->
-					<div class="w-full h-px bg-gray-200"></div>
-					
+					<div class="h-px w-full bg-gray-200"></div>
+
 					<!-- Button Row -->
 					<div class="flex w-full">
 						<!-- Recenter Button (keeps rotation) -->
 						<button
 							onclick={recenterView}
-							class="flex-1 flex items-center justify-center py-2.5 px-3 hover:bg-gray-100 transition-colors border-r border-gray-200"
+							class="flex flex-1 items-center justify-center border-r border-gray-200 px-3 py-2.5 transition-colors hover:bg-gray-100"
 							title="Recenter (keep rotation)"
 						>
 							<svg
@@ -867,11 +862,11 @@
 								<circle cx="12" cy="12" r="2" fill="currentColor" />
 							</svg>
 						</button>
-						
+
 						<!-- Reset View Button (full reset) -->
 						<button
 							onclick={resetView}
-							class="flex-1 flex items-center justify-center py-2.5 px-3 hover:bg-gray-100 transition-colors"
+							class="flex flex-1 items-center justify-center px-3 py-2.5 transition-colors hover:bg-gray-100"
 							title="Reset View"
 						>
 							<svg
