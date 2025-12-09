@@ -4,6 +4,8 @@
 	import * as THREE from 'three';
 	import * as OBC from '@thatopen/components';
 	import * as OBCF from '@thatopen/components-front';
+	import SidePanel from './SidePanel.svelte';
+	import { buildIFCTree, type TreeNode } from '$lib/utils/ifcTreeBuilder';
 
 	let container: HTMLDivElement;
 	let components: OBC.Components | null = null;
@@ -14,6 +16,9 @@
 	let error: string | null = $state(null);
 	let selectedElement: any = $state(null);
 	let currentModel: any = null;
+	let sidePanelOpen = $state(true);
+	let ifcTree: TreeNode[] = $state([]);
+	let sidePanelRef: any;
 
 	onMount(() => {
 		initViewer();
@@ -43,15 +48,7 @@
 
 		components.init();
 
-		// Fetch and initialize fragments worker
-		const githubUrl = 'https://thatopen.github.io/engine_fragment/resources/worker.mjs';
-		const fetchedUrl = await fetch(githubUrl);
-		const workerBlob = await fetchedUrl.blob();
-		const workerFile = new File([workerBlob], 'worker.mjs', {
-			type: 'text/javascript'
-		});
-		const workerUrl = URL.createObjectURL(workerFile);
-
+		// Get fragments manager
 		const fragments = components.get(OBC.FragmentsManager) as unknown as {
 			init?: (url: string) => void;
 			list?: {
@@ -64,7 +61,19 @@
 			};
 		};
 
-		fragments.init?.(workerUrl);
+		// Fetch and initialize fragments worker
+		try {
+			const githubUrl = 'https://thatopen.github.io/engine_fragment/resources/worker.mjs';
+			const fetchedUrl = await fetch(githubUrl);
+			const workerBlob = await fetchedUrl.blob();
+			const workerFile = new File([workerBlob], 'worker.mjs', {
+				type: 'text/javascript'
+			});
+			const workerUrl = URL.createObjectURL(workerFile);
+			fragments.init?.(workerUrl);
+		} catch (err) {
+			// Silently handle worker initialization error
+		}
 
 		// Set up event handler for when models are loaded
 		fragments.list?.onItemSet?.add?.((event: { value: unknown }) => {
@@ -130,10 +139,8 @@
 
 		// Setup highlighter for hover and selection effects
 		const highlighter = components.get(OBCF.Highlighter);
-		console.log('Highlighter instance:', highlighter);
 
 		highlighter.setup({ world });
-		console.log('Highlighter setup complete');
 
 		// Configure colors and settings
 		highlighter.zoomToSelection = false;
@@ -153,8 +160,6 @@
 			transparent: true,
 			renderedFaces: 0
 		});
-
-		console.log('Highlighter styles configured:', Array.from(highlighter.styles.keys()));
 
 		// Setup selection event listener
 		(highlighter as any).events.select.onHighlight.add(async (modelIdMap: any) => {
@@ -196,9 +201,18 @@
 							ModelID: modelID
 						};
 					}
+
+					// Auto-open properties section when element is selected
+					if (sidePanelRef) {
+						sidePanelRef.setActiveAccordion('properties');
+					}
+					// Auto-open side panel if closed
+					if (!sidePanelOpen) {
+						sidePanelOpen = true;
+					}
 				}
 			} catch (err) {
-				console.error('Error in selection handler:', err);
+				// Silently handle selection errors
 			}
 		});
 	}
@@ -254,8 +268,12 @@
 			currentModel = model;
 			hasModel = true;
 			selectedElement = null; // Reset selection when loading new model
+
+			// Build IFC tree structure
+			setTimeout(async () => {
+				ifcTree = await buildIFCTree(components, currentModel);
+			}, 500); // Give time for fragments to be processed
 		} catch (err) {
-			console.error('Error loading IFC file:', err);
 			error = err instanceof Error ? err.message : 'Failed to load IFC file. Please try again.';
 		} finally {
 			isLoading = false;
@@ -292,6 +310,34 @@
 		const input = document.getElementById('file-input') as HTMLInputElement;
 		input?.click();
 	}
+
+	function toggleSidePanel() {
+		sidePanelOpen = !sidePanelOpen;
+	}
+
+	function handleTreeItemClick(item: TreeNode) {
+		if (item.expressID && currentModel) {
+			// Highlight the element in the viewer
+			const highlighter = components?.get(OBCF.Highlighter);
+			if (highlighter) {
+				try {
+					// Clear previous selection
+					highlighter.clear('select');
+
+					// Select the new element
+					const modelName = Object.keys((components!.get(OBC.FragmentsManager) as any).list)[0];
+					(highlighter as any).highlight(
+						'select',
+						new Map([[modelName, new Set([item.expressID])]])
+					);
+
+					// The selection event handler will automatically open the properties section
+				} catch (err) {
+					// Silently handle error
+				}
+			}
+		}
+	}
 </script>
 
 <div class="relative flex h-full w-full flex-col">
@@ -306,153 +352,138 @@
 	</div>
 	<input id="file-input" type="file" accept=".ifc" class="hidden" onchange={handleFileInput} />
 
-	<!-- Viewer Area -->
-	<div
-		class="relative flex-1 overflow-hidden transition-all {isDragging ? 'bg-blue-50' : ''}"
-		ondrop={handleDrop}
-		ondragover={handleDragOver}
-		ondragleave={handleDragLeave}
-		role="button"
-		tabindex="0"
-	>
-		<div bind:this={container} class="h-full w-full"></div>
+	<!-- Main Content Area -->
+	<div class="relative flex flex-1 overflow-hidden">
+		<!-- Side Panel Component -->
+		<SidePanel
+			bind:this={sidePanelRef}
+			isOpen={sidePanelOpen}
+			tree={ifcTree}
+			{hasModel}
+			{selectedElement}
+			onToggle={toggleSidePanel}
+			onTreeItemClick={handleTreeItemClick}
+		/>
 
-		{#if !hasModel && !isLoading}
-			<div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-				<div
-					class="pointer-events-auto flex h-1/2 w-1/2 cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed transition-all {isDragging
-						? 'border-blue-500 bg-blue-50 text-blue-600'
-						: 'border-gray-300 text-gray-400 hover:border-gray-400 hover:bg-gray-50'}"
-					onclick={triggerFileInput}
-					onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && triggerFileInput()}
-					role="button"
-					tabindex="0"
-				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="64"
-						height="64"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.5"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						class="transition-all"
-					>
-						<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-						<polyline points="17 8 12 3 7 8" />
-						<line x1="12" y1="3" x2="12" y2="15" />
-					</svg>
-					<p class="text-lg font-medium">Drop your IFC file here</p>
-					<p class="text-sm opacity-70">or click to browse</p>
-				</div>
-			</div>
-		{/if}
-
-		{#if isLoading}
-			<div
-				class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-white/90 backdrop-blur-sm"
+		<!-- Toggle Button (when panel is closed) -->
+		{#if !sidePanelOpen}
+			<button
+				onclick={toggleSidePanel}
+				class="absolute top-4 left-4 z-20 rounded bg-white p-2 shadow-md transition-colors hover:bg-gray-50"
+				aria-label="Open panel"
 			>
-				<div
-					class="h-16 w-16 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500"
-				></div>
-				<p class="text-lg font-medium text-gray-900">Loading IFC file...</p>
-				<p class="text-sm text-gray-500">This may take a moment</p>
-			</div>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-6 w-6 text-gray-700"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+				>
+					<line x1="3" y1="12" x2="21" y2="12" />
+					<line x1="3" y1="6" x2="21" y2="6" />
+					<line x1="3" y1="18" x2="21" y2="18" />
+				</svg>
+			</button>
 		{/if}
 
-		{#if error}
-			<div class="animate-fade-in absolute top-4 right-4 z-30 max-w-md">
-				<div class="rounded-lg border border-red-200 bg-white p-4 shadow-lg">
-					<div class="flex items-start gap-3">
+		<!-- Viewer Area -->
+		<div
+			class="relative flex-1 overflow-hidden transition-all {isDragging ? 'bg-blue-50' : ''}"
+			ondrop={handleDrop}
+			ondragover={handleDragOver}
+			ondragleave={handleDragLeave}
+			role="button"
+			tabindex="0"
+		>
+			<div bind:this={container} class="h-full w-full"></div>
+
+			{#if !hasModel && !isLoading}
+				<div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+					<div
+						class="pointer-events-auto flex h-1/2 w-1/2 cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed transition-all {isDragging
+							? 'border-blue-500 bg-blue-50 text-blue-600'
+							: 'border-gray-300 text-gray-400 hover:border-gray-400 hover:bg-gray-50'}"
+						onclick={triggerFileInput}
+						onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && triggerFileInput()}
+						role="button"
+						tabindex="0"
+					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
-							class="h-5 w-5 flex-shrink-0 text-red-500"
+							width="64"
+							height="64"
 							viewBox="0 0 24 24"
 							fill="none"
 							stroke="currentColor"
-							stroke-width="2"
+							stroke-width="1.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="transition-all"
 						>
-							<circle cx="12" cy="12" r="10" />
-							<line x1="12" y1="8" x2="12" y2="12" />
-							<line x1="12" y1="16" x2="12.01" y2="16" />
+							<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+							<polyline points="17 8 12 3 7 8" />
+							<line x1="12" y1="3" x2="12" y2="15" />
 						</svg>
-						<div class="flex-1">
-							<h3 class="font-semibold text-red-800">Error Loading IFC File</h3>
-							<p class="mt-1 text-sm text-red-700">{error}</p>
-						</div>
-						<button
-							onclick={() => (error = null)}
-							class="flex-shrink-0 text-red-400 transition-colors hover:text-red-600"
-							aria-label="Close error"
-						>
+						<p class="text-lg font-medium">Drop your IFC file here</p>
+						<p class="text-sm opacity-70">or click to browse</p>
+					</div>
+				</div>
+			{/if}
+
+			{#if isLoading}
+				<div
+					class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-white/90 backdrop-blur-sm"
+				>
+					<div
+						class="h-16 w-16 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500"
+					></div>
+					<p class="text-lg font-medium text-gray-900">Loading IFC file...</p>
+					<p class="text-sm text-gray-500">This may take a moment</p>
+				</div>
+			{/if}
+
+			{#if error}
+				<div class="animate-fade-in absolute top-4 right-4 z-30 max-w-md">
+					<div class="rounded-lg border border-red-200 bg-white p-4 shadow-lg">
+						<div class="flex items-start gap-3">
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
-								class="h-5 w-5"
+								class="h-5 w-5 flex-shrink-0 text-red-500"
 								viewBox="0 0 24 24"
 								fill="none"
 								stroke="currentColor"
 								stroke-width="2"
 							>
-								<line x1="18" y1="6" x2="6" y2="18" />
-								<line x1="6" y1="6" x2="18" y2="18" />
+								<circle cx="12" cy="12" r="10" />
+								<line x1="12" y1="8" x2="12" y2="12" />
+								<line x1="12" y1="16" x2="12.01" y2="16" />
 							</svg>
-						</button>
-					</div>
-				</div>
-			</div>
-		{/if}
-
-		<!-- Details Panel -->
-		{#if selectedElement}
-			<div class="animate-fade-in absolute right-4 bottom-4 z-30 w-80" style="background: white;">
-				<div class="rounded-lg border border-gray-200 bg-white shadow-lg">
-					<div class="flex items-center justify-between border-b border-gray-200 p-4">
-						<h3 class="font-semibold text-gray-900">Element Details</h3>
-						<button
-							onclick={() => (selectedElement = null)}
-							class="text-gray-400 transition-colors hover:text-gray-600"
-							aria-label="Close details"
-						>
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								class="h-5 w-5"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
+							<div class="flex-1">
+								<h3 class="font-semibold text-red-800">Error Loading IFC File</h3>
+								<p class="mt-1 text-sm text-red-700">{error}</p>
+							</div>
+							<button
+								onclick={() => (error = null)}
+								class="flex-shrink-0 text-red-400 transition-colors hover:text-red-600"
+								aria-label="Close error"
 							>
-								<line x1="18" y1="6" x2="6" y2="18" />
-								<line x1="6" y1="6" x2="18" y2="18" />
-							</svg>
-						</button>
-					</div>
-					<div class="max-h-96 overflow-y-auto p-4">
-						<div class="space-y-3">
-							{#each Object.entries(selectedElement) as [key, value]}
-								{@const displayValue =
-									typeof value === 'object' && value !== null && 'value' in value
-										? value.value
-										: value}
-								{@const shouldDisplay =
-									displayValue !== null &&
-									displayValue !== undefined &&
-									typeof displayValue !== 'object'}
-
-								{#if shouldDisplay}
-									<div>
-										<dt class="text-xs font-medium tracking-wider text-gray-500 uppercase">
-											{key.replace(/^_/, '')}
-										</dt>
-										<dd class="mt-1 text-sm text-gray-900">{displayValue}</dd>
-									</div>
-								{/if}
-							{/each}
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="h-5 w-5"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<line x1="18" y1="6" x2="6" y2="18" />
+									<line x1="6" y1="6" x2="18" y2="18" />
+								</svg>
+							</button>
 						</div>
 					</div>
 				</div>
-			</div>
-		{/if}
+			{/if}
+		</div>
 	</div>
 </div>
