@@ -3,14 +3,17 @@
 	import { onMount, onDestroy } from 'svelte';
 	import * as THREE from 'three';
 	import * as OBC from '@thatopen/components';
+	import * as OBCF from '@thatopen/components-front';
 
 	let container: HTMLDivElement;
 	let components: OBC.Components | null = null;
 	let world: OBC.World | null = null;
-	let isDragging = false;
-	let hasModel = false;
-	let isLoading = false;
-	let error: string | null = null;
+	let isDragging = $state(false);
+	let hasModel = $state(false);
+	let isLoading = $state(false);
+	let error: string | null = $state(null);
+	let selectedElement: any = $state(null);
+	let currentModel: any = null;
 
 	onMount(() => {
 		initViewer();
@@ -124,6 +127,80 @@
 		const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
 		directionalLight.position.set(5, 10, 5);
 		world.scene.three.add(directionalLight);
+
+		// Setup highlighter for hover and selection effects
+		const highlighter = components.get(OBCF.Highlighter);
+		console.log('Highlighter instance:', highlighter);
+
+		highlighter.setup({ world });
+		console.log('Highlighter setup complete');
+
+		// Configure colors and settings
+		highlighter.zoomToSelection = false;
+
+		// Configure hover style (light blue)
+		highlighter.styles.set('hover', {
+			color: new THREE.Color(0xbfdbfe),
+			opacity: 0.6,
+			transparent: true,
+			renderedFaces: 0
+		});
+
+		// Configure selection style (solid blue)
+		highlighter.styles.set('select', {
+			color: new THREE.Color(0x3b82f6),
+			opacity: 0.8,
+			transparent: true,
+			renderedFaces: 0
+		});
+
+		console.log('Highlighter styles configured:', Array.from(highlighter.styles.keys()));
+
+		// Setup selection event listener
+		(highlighter as any).events.select.onHighlight.add(async (modelIdMap: any) => {
+			if (!currentModel || !modelIdMap || Object.keys(modelIdMap).length === 0) {
+				return;
+			}
+
+			try {
+				// The structure is: { modelName: Set<fragmentID> }
+				const modelID = Object.keys(modelIdMap)[0];
+				const fragmentIdsSet = modelIdMap[modelID];
+
+				if (fragmentIdsSet instanceof Set && fragmentIdsSet.size > 0) {
+					const fragmentID = Array.from(fragmentIdsSet)[0];
+
+					// Get the fragment group and fetch IFC properties
+					const fragments = components!.get(OBC.FragmentsManager);
+					const fragmentGroup = (fragments as any).list?.get?.(modelID);
+
+					if (fragmentGroup && typeof (fragmentGroup as any).getItemsData === 'function') {
+						const itemsData = await (fragmentGroup as any).getItemsData([fragmentID]);
+
+						if (itemsData && itemsData.length > 0) {
+							selectedElement = {
+								ExpressID: fragmentID,
+								...itemsData[0]
+							};
+						} else {
+							selectedElement = {
+								ExpressID: fragmentID,
+								ModelID: modelID,
+								Name: 'IFC Element'
+							};
+						}
+					} else {
+						selectedElement = {
+							ExpressID: fragmentID,
+							Name: 'Selected Element',
+							ModelID: modelID
+						};
+					}
+				}
+			} catch (err) {
+				console.error('Error in selection handler:', err);
+			}
+		});
 	}
 
 	async function handleFiles(files: FileList) {
@@ -174,7 +251,9 @@
 				world.scene.three.add(model.object);
 			}
 
+			currentModel = model;
 			hasModel = true;
+			selectedElement = null; // Reset selection when loading new model
 		} catch (err) {
 			console.error('Error loading IFC file:', err);
 			error = err instanceof Error ? err.message : 'Failed to load IFC file. Please try again.';
@@ -245,6 +324,9 @@
 						? 'border-blue-500 bg-blue-50 text-blue-600'
 						: 'border-gray-300 text-gray-400 hover:border-gray-400 hover:bg-gray-50'}"
 					onclick={triggerFileInput}
+					onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && triggerFileInput()}
+					role="button"
+					tabindex="0"
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -317,6 +399,57 @@
 								<line x1="6" y1="6" x2="18" y2="18" />
 							</svg>
 						</button>
+					</div>
+				</div>
+			</div>
+		{/if}
+
+		<!-- Details Panel -->
+		{#if selectedElement}
+			<div class="animate-fade-in absolute right-4 bottom-4 z-30 w-80" style="background: white;">
+				<div class="rounded-lg border border-gray-200 bg-white shadow-lg">
+					<div class="flex items-center justify-between border-b border-gray-200 p-4">
+						<h3 class="font-semibold text-gray-900">Element Details</h3>
+						<button
+							onclick={() => (selectedElement = null)}
+							class="text-gray-400 transition-colors hover:text-gray-600"
+							aria-label="Close details"
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-5 w-5"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+							>
+								<line x1="18" y1="6" x2="6" y2="18" />
+								<line x1="6" y1="6" x2="18" y2="18" />
+							</svg>
+						</button>
+					</div>
+					<div class="max-h-96 overflow-y-auto p-4">
+						<div class="space-y-3">
+							{#each Object.entries(selectedElement) as [key, value]}
+								{@const displayValue =
+									typeof value === 'object' && value !== null && 'value' in value
+										? value.value
+										: value}
+								{@const shouldDisplay =
+									displayValue !== null &&
+									displayValue !== undefined &&
+									typeof displayValue !== 'object'}
+
+								{#if shouldDisplay}
+									<div>
+										<dt class="text-xs font-medium tracking-wider text-gray-500 uppercase">
+											{key.replace(/^_/, '')}
+										</dt>
+										<dd class="mt-1 text-sm text-gray-900">{displayValue}</dd>
+									</div>
+								{/if}
+							{/each}
+						</div>
 					</div>
 				</div>
 			</div>

@@ -5,7 +5,8 @@ export default defineConfig({
 	plugins: [sveltekit()],
 	optimizeDeps: {
 		exclude: ['@thatopen/components', '@thatopen/components-front']
+	},
+	server: {
+		port: 3000
 	}
 });
-
-
