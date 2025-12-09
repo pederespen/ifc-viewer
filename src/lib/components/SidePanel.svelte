@@ -11,6 +11,7 @@
 		onTreeItemClick: (node: TreeNode) => void;
 		onTreeItemHover: (node: TreeNode | null) => void;
 		onVisibilityToggle: (node: TreeNode) => void;
+		onClearSelection: () => void;
 	}
 
 	let {
@@ -21,7 +22,8 @@
 		onToggle,
 		onTreeItemClick,
 		onTreeItemHover,
-		onVisibilityToggle
+		onVisibilityToggle,
+		onClearSelection
 	}: Props = $props();
 	let activeAccordion: string | null = $state('tree');
 
@@ -107,7 +109,7 @@
 					onclick={() => toggleAccordion('properties')}
 					class="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-gray-50"
 				>
-					<span class="font-medium text-gray-900">Properties</span>
+					<span class="font-medium text-gray-900">Object Properties</span>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						class="h-5 w-5 text-gray-500 transition-transform {activeAccordion === 'properties'
@@ -126,7 +128,15 @@
 					<div class="border-t border-gray-100 bg-gray-50 px-4 py-4">
 						{#if selectedElement}
 							<div class="space-y-3">
-								<h4 class="text-sm font-semibold text-gray-900">Element Details</h4>
+								<div class="flex items-center justify-between">
+									<h4 class="text-sm font-semibold text-gray-900">Element Details</h4>
+									<button
+										onclick={onClearSelection}
+										class="rounded px-2 py-1 text-xs text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-700"
+									>
+										Clear
+									</button>
+								</div>
 								<div class="max-h-96 space-y-3 overflow-y-auto">
 									{#each Object.entries(selectedElement) as [key, value]}
 										{@const displayValue =

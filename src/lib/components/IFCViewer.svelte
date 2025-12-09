@@ -48,6 +48,15 @@
 		world.renderer = new OBC.SimpleRenderer(components, container);
 		world.camera = new OBC.SimpleCamera(components);
 
+		// Update camera aspect ratio on resize to prevent squishing
+		world.renderer.onResize.add((size: THREE.Vector2) => {
+			const camera = world!.camera.three as THREE.PerspectiveCamera;
+			if (camera.isPerspectiveCamera) {
+				camera.aspect = size.x / size.y;
+				camera.updateProjectionMatrix();
+			}
+		});
+
 		components.init();
 
 		// Get fragments manager
@@ -139,31 +148,54 @@
 		directionalLight.position.set(5, 10, 5);
 		world.scene.three.add(directionalLight);
 
-		// Setup highlighter for hover and selection effects
+		// Setup highlighter for selection effects
 		const highlighter = components.get(OBCF.Highlighter);
 
-		highlighter.setup({ world });
+		// Disable default click-to-select behavior (we'll use double-click instead)
+		highlighter.setup({ world, selectEnabled: false });
 
 		// Configure colors and settings
 		highlighter.zoomToSelection = false;
 
-		// Configure hover style - semi-transparent darker blue that shines through other geometry
-		highlighter.styles.set('hover', {
-			color: new THREE.Color(0x6366f1), // Indigo/purple-blue
-			opacity: 0.4,
-			transparent: true,
-			renderedFaces: 1, // TWO = 1 for both sides
-			depthTest: false // Render on top of everything (x-ray effect)
+		// Configure selection style for model double-click - solid orange
+		highlighter.styles.set('select', {
+			color: new THREE.Color(0xf59e0b), // Amber/orange
+			opacity: 1,
+			transparent: false,
+			renderedFaces: 0
 		});
 
-		// Configure selection style (solid blue)
-		highlighter.styles.set('select', {
-			color: new THREE.Color(0x3b82f6),
-			opacity: 0.6,
+		// Configure tree selection style - transparent x-ray for seeing through
+		highlighter.styles.set('treeSelect', {
+			color: new THREE.Color(0xf59e0b), // Amber/orange
+			opacity: 0.8,
 			transparent: true,
 			renderedFaces: 1,
-			depthTest: false // Also render on top for selection
+			depthTest: false // Render on top for x-ray effect
 		});
+
+		// Setup hover style for instant highlighting - light blue
+		highlighter.styles.set('hover', {
+			color: new THREE.Color(0x93c5fd), // Light blue
+			opacity: 1,
+			transparent: false,
+			renderedFaces: 0
+		});
+
+		// Custom instant hover - bypasses Hoverer's 50ms debounce
+		const rendererEl = world.renderer?.three.domElement;
+		if (rendererEl) {
+			rendererEl.addEventListener('pointermove', () => {
+				// Fire and forget - no await to avoid blocking
+				highlighter.highlight('hover', true, false).catch(() => {});
+			});
+
+			// Double-click to select (clear tree selection first)
+			rendererEl.addEventListener('dblclick', () => {
+				highlighter.clear('treeSelect');
+				highlighter.highlight('select', true, false).catch(() => {});
+			});
+		}
 
 		// Setup selection event listener
 		(highlighter as any).events.select.onHighlight.add(async (modelIdMap: any) => {
@@ -320,21 +352,29 @@
 		sidePanelOpen = !sidePanelOpen;
 	}
 
+	function handleClearSelection() {
+		const highlighter = components?.get(OBCF.Highlighter);
+		if (highlighter) {
+			highlighter.clear('select');
+			highlighter.clear('treeSelect');
+		}
+		selectedElement = null;
+	}
+
 	function handleTreeItemClick(item: TreeNode) {
 		if (item.expressID && currentModel) {
 			// Highlight the element in the viewer
 			const highlighter = components?.get(OBCF.Highlighter);
 			if (highlighter) {
 				try {
-					// Clear previous selection
+					// Clear previous selections
 					highlighter.clear('select');
+					highlighter.clear('treeSelect');
 
-					// Select the new element
+					// Select the new element with tree style (x-ray)
 					const modelName = Object.keys((components!.get(OBC.FragmentsManager) as any).list)[0];
-					(highlighter as any).highlight(
-						'select',
-						new Map([[modelName, new Set([item.expressID])]])
-					);
+					const modelIdMap = { [modelName]: new Set([item.expressID]) };
+					highlighter.highlightByID('treeSelect', modelIdMap, true, false);
 
 					// The selection event handler will automatically open the properties section
 				} catch (err) {
@@ -468,6 +508,7 @@
 			onTreeItemClick={handleTreeItemClick}
 			onTreeItemHover={handleTreeItemHover}
 			onVisibilityToggle={handleVisibilityToggle}
+			onClearSelection={handleClearSelection}
 		/>
 
 		<!-- Toggle Button (when panel is closed) -->
