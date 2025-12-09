@@ -16,6 +16,7 @@
 	let error: string | null = $state(null);
 	let selectedElement: any = $state(null);
 	let currentModel: any = null;
+	let currentFileName = $state<string>('');
 	let sidePanelOpen = $state(true);
 	let ifcTree: TreeNode[] = $state([]);
 	let sidePanelRef: any;
@@ -266,6 +267,7 @@
 			}
 
 			currentModel = model;
+			currentFileName = file.name;
 			hasModel = true;
 			selectedElement = null; // Reset selection when loading new model
 
@@ -342,13 +344,22 @@
 
 <div class="relative flex h-full w-full flex-col">
 	<!-- Header -->
-	<div class="z-10 flex items-center gap-6 border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
-		<button
-			class="cursor-pointer text-2xl font-semibold text-gray-900 transition-colors hover:text-blue-600"
-			onclick={() => window.location.reload()}
-		>
-			IFC Viewer
-		</button>
+	<div
+		class="z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 shadow-sm"
+	>
+		<div class="flex items-center gap-3">
+			<button
+				class="relative cursor-pointer text-2xl font-semibold text-gray-900 transition-colors hover:text-blue-600"
+				onclick={() => window.location.reload()}
+			>
+				IFC Viewer
+				<span class="align-super text-xs font-normal text-gray-400 lowercase">beta</span>
+			</button>
+			{#if currentFileName}
+				<span class="text-sm text-gray-600">•</span>
+				<span class="text-sm text-gray-700">{currentFileName}</span>
+			{/if}
+		</div>
 	</div>
 	<input id="file-input" type="file" accept=".ifc" class="hidden" onchange={handleFileInput} />
 
