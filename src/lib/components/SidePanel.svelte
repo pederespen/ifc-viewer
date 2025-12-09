@@ -8,10 +8,21 @@
 		hasModel: boolean;
 		selectedElement: any;
 		onToggle: () => void;
-		onTreeItemClick: (item: TreeNode) => void;
+		onTreeItemClick: (node: TreeNode) => void;
+		onTreeItemHover: (node: TreeNode | null) => void;
+		onVisibilityToggle: (node: TreeNode) => void;
 	}
 
-	let { isOpen, tree, hasModel, selectedElement, onToggle, onTreeItemClick }: Props = $props();
+	let {
+		isOpen,
+		tree,
+		hasModel,
+		selectedElement,
+		onToggle,
+		onTreeItemClick,
+		onTreeItemHover,
+		onVisibilityToggle
+	}: Props = $props();
 	let activeAccordion: string | null = $state('tree');
 
 	function toggleAccordion(section: string) {
@@ -79,7 +90,13 @@
 
 				{#if activeAccordion === 'tree'}
 					<div class="border-t border-gray-100 bg-gray-50 px-2 py-2">
-						<TreeView {tree} {hasModel} onItemClick={onTreeItemClick} />
+						<TreeView
+							{tree}
+							{hasModel}
+							onItemClick={onTreeItemClick}
+							onItemHover={onTreeItemHover}
+							{onVisibilityToggle}
+						/>
 					</div>
 				{/if}
 			</div>

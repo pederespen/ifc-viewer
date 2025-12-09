@@ -5,7 +5,20 @@ export interface TreeNode {
 	name: string;
 	type: string;
 	expressID?: number;
+	visible: boolean;
 	children: TreeNode[];
+}
+
+// Helper to collect all expressIDs from a node and its descendants
+export function collectExpressIDs(node: TreeNode): number[] {
+	const ids: number[] = [];
+	if (node.expressID !== undefined) {
+		ids.push(node.expressID);
+	}
+	for (const child of node.children) {
+		ids.push(...collectExpressIDs(child));
+	}
+	return ids;
 }
 
 export async function buildIFCTree(
@@ -33,6 +46,7 @@ export async function buildIFCTree(
 					id: modelID,
 					name: model.name || 'IFC Model',
 					type: 'Model',
+					visible: true,
 					children: []
 				};
 
@@ -56,11 +70,13 @@ export async function buildIFCTree(
 					id: modelID,
 					name: model.name || 'IFC Model',
 					type: 'Model',
+					visible: true,
 					children: [
 						{
 							id: `${modelID}-error`,
 							name: `Error loading structure: ${err}`,
 							type: 'Error',
+							visible: true,
 							children: []
 						}
 					]
@@ -86,9 +102,13 @@ async function buildSpatialTree(
 
 		// If this is a category node (has category but no localId)
 		if (spatialItem.category && spatialItem.localId === null) {
-			// Skip the category wrapper and process its children directly
+			// Process children but pass down the category
 			if (spatialItem.children && Array.isArray(spatialItem.children)) {
 				for (const child of spatialItem.children) {
+					// Pass the parent category to children that don't have one
+					if (child.localId !== null && !child.category) {
+						child.category = spatialItem.category;
+					}
 					await buildSpatialTree(model, child, parentChildren);
 				}
 			}
@@ -111,9 +131,8 @@ async function buildSpatialTree(
 				if (itemsData && itemsData.length > 0) {
 					itemData = itemsData[0];
 
-					// Try various ways to get the name
-					// Names can be strings or objects like {value: 'Name', type: 'IFCLABEL'}
-					const getName = (val: any) => {
+					// Get the value from objects like {value: 'Name', type: 'IFCLABEL'}
+					const getValue = (val: any) => {
 						if (!val) return null;
 						if (typeof val === 'string') return val;
 						if (typeof val === 'object' && val.value) return val.value;
@@ -121,17 +140,14 @@ async function buildSpatialTree(
 					};
 
 					elementName =
-						getName(itemData.name) ||
-						getName(itemData.Name) ||
-						getName(itemData.longName) ||
-						getName(itemData.LongName) ||
-						getName(itemData.attributes?.Name) ||
-						getName(itemData.attributes?.name) ||
-						getName(itemData.attributes?.LongName) ||
+						getValue(itemData.Name) ||
+						getValue(itemData.name) ||
+						getValue(itemData.LongName) ||
+						getValue(itemData.longName) ||
 						`${elementType} ${spatialItem.localId}`;
 
-					// Get the category/type
-					elementType = itemData.category || itemData.type || spatialItem.category || 'Element';
+					// Get the category/type - data comes with underscore prefix like _category
+					elementType = getValue(itemData._category) || spatialItem.category || 'Element';
 				}
 			} catch (err) {
 				// Silently fail and use default names
@@ -142,6 +158,7 @@ async function buildSpatialTree(
 				name: elementName,
 				type: elementType,
 				expressID: spatialItem.localId,
+				visible: true,
 				children: []
 			};
 
@@ -212,6 +229,7 @@ async function buildSimpleTree(model: any, parentChildren: TreeNode[]) {
 								name: itemData.name || `${category} ${localId}`,
 								type: category,
 								expressID: localId,
+								visible: true,
 								children: []
 							});
 							totalItems++;
@@ -224,6 +242,7 @@ async function buildSimpleTree(model: any, parentChildren: TreeNode[]) {
 								name: `${category} ${localId}`,
 								type: category,
 								expressID: localId,
+								visible: true,
 								children: []
 							});
 							totalItems++;
@@ -244,6 +263,7 @@ async function buildSimpleTree(model: any, parentChildren: TreeNode[]) {
 				id: 'no-items',
 				name: 'No items found in model',
 				type: 'Info',
+				visible: true,
 				children: []
 			});
 			return;
@@ -255,6 +275,7 @@ async function buildSimpleTree(model: any, parentChildren: TreeNode[]) {
 				id: `type-${typeName}`,
 				name: `${typeName} (${items.length})`,
 				type: 'TypeGroup',
+				visible: true,
 				children: items
 			});
 		}
@@ -263,6 +284,7 @@ async function buildSimpleTree(model: any, parentChildren: TreeNode[]) {
 			id: 'error',
 			name: `Error: ${err}`,
 			type: 'Error',
+			visible: true,
 			children: []
 		});
 	}

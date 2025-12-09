@@ -5,7 +5,7 @@
 	import * as OBC from '@thatopen/components';
 	import * as OBCF from '@thatopen/components-front';
 	import SidePanel from './SidePanel.svelte';
-	import { buildIFCTree, type TreeNode } from '$lib/utils/ifcTreeBuilder';
+	import { buildIFCTree, collectExpressIDs, type TreeNode } from '$lib/utils/ifcTreeBuilder';
 
 	let container: HTMLDivElement;
 	let components: OBC.Components | null = null;
@@ -20,6 +20,7 @@
 	let sidePanelOpen = $state(true);
 	let ifcTree: TreeNode[] = $state([]);
 	let sidePanelRef: any;
+	let hiddenExpressIDs = $state(new Set<number>());
 
 	onMount(() => {
 		initViewer();
@@ -340,6 +341,85 @@
 			}
 		}
 	}
+
+	function handleTreeItemHover(item: TreeNode | null) {
+		if (!components || !currentModel) return;
+
+		const highlighter = components.get(OBCF.Highlighter);
+		if (!highlighter) return;
+
+		try {
+			// Clear hover highlight
+			highlighter.clear('hover');
+
+			if (item) {
+				// Collect all expressIDs from this node and its children
+				const ids = collectExpressIDs(item);
+				if (ids.length > 0) {
+					const modelName = Object.keys((components.get(OBC.FragmentsManager) as any).list)[0];
+					(highlighter as any).highlight('hover', new Map([[modelName, new Set(ids)]]));
+				}
+			}
+		} catch (err) {
+			// Silently handle error
+		}
+	}
+
+	function updateNodeVisibility(node: TreeNode, visible: boolean) {
+		node.visible = visible;
+		for (const child of node.children) {
+			updateNodeVisibility(child, visible);
+		}
+	}
+
+	function handleVisibilityToggle(item: TreeNode) {
+		if (!components || !currentModel) return;
+
+		const newVisible = !item.visible;
+
+		// Update the node and all children
+		updateNodeVisibility(item, newVisible);
+
+		// Force reactivity by creating a new array reference
+		ifcTree = [...ifcTree];
+
+		// Collect all expressIDs from this node and children
+		const ids = collectExpressIDs(item);
+
+		// Update hidden set
+		const newHiddenSet = new Set(hiddenExpressIDs);
+		for (const id of ids) {
+			if (newVisible) {
+				newHiddenSet.delete(id);
+			} else {
+				newHiddenSet.add(id);
+			}
+		}
+		hiddenExpressIDs = newHiddenSet;
+
+		// Apply visibility to the model using fragments API
+		applyVisibilityToFragments(ids, newVisible);
+	}
+
+	function applyVisibilityToFragments(expressIDs: number[], visible: boolean) {
+		if (!components) return;
+
+		try {
+			const fragments = components.get(OBC.FragmentsManager);
+			const fragmentsList = (fragments as any).list;
+
+			if (!fragmentsList || fragmentsList.size === 0) return;
+
+			for (const [, fragmentGroup] of fragmentsList) {
+				// Use setVisible method - signature: setVisible(localIds: number[] | undefined, visible: boolean)
+				if (typeof fragmentGroup.setVisible === 'function') {
+					fragmentGroup.setVisible(expressIDs, visible);
+				}
+			}
+		} catch (err) {
+			console.error('Error setting visibility:', err);
+		}
+	}
 </script>
 
 <div class="relative flex h-full w-full flex-col">
@@ -374,6 +454,8 @@
 			{selectedElement}
 			onToggle={toggleSidePanel}
 			onTreeItemClick={handleTreeItemClick}
+			onTreeItemHover={handleTreeItemHover}
+			onVisibilityToggle={handleVisibilityToggle}
 		/>
 
 		<!-- Toggle Button (when panel is closed) -->
