@@ -57,7 +57,8 @@ export type HighlightStyleName = keyof typeof HIGHLIGHT_STYLES;
 export function setupHighlighter(
 	components: OBC.Components,
 	world: OBC.World,
-	onSelect: (element: SelectedElement | null) => void
+	onSelect: (element: SelectedElement | null) => void,
+	isDoubleClickDisabled?: () => boolean
 ): void {
 	const highlighter = components.get(OBCF.Highlighter);
 
@@ -74,11 +75,14 @@ export function setupHighlighter(
 	const rendererEl = world.renderer?.three.domElement;
 	if (rendererEl) {
 		rendererEl.addEventListener('pointermove', () => {
+			// Don't show hover highlight when double-click is disabled (e.g., measurement mode)
+			if (isDoubleClickDisabled?.()) return;
 			highlighter.highlight('hover', true, false).catch(() => {});
 		});
 
-		// Double-click to select
+		// Double-click to select (unless disabled, e.g., by measurement tool)
 		rendererEl.addEventListener('dblclick', () => {
+			if (isDoubleClickDisabled?.()) return;
 			highlighter.clear('treeSelect');
 			highlighter.highlight('select', true, false).catch(() => {});
 		});
@@ -157,6 +161,14 @@ export function clearSelection(components: OBC.Components): void {
 	highlighter.clear('select');
 	highlighter.clear('treeSelect');
 	highlighter.clear('treeHover');
+}
+
+/**
+ * Clear hover highlight
+ */
+export function clearHoverHighlight(components: OBC.Components): void {
+	const highlighter = components.get(OBCF.Highlighter);
+	highlighter.clear('hover');
 }
 
 /**

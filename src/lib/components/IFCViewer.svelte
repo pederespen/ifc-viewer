@@ -8,6 +8,7 @@
 	import {
 		setupHighlighter,
 		clearSelection,
+		clearHoverHighlight,
 		highlightByID,
 		getFirstModelName
 	} from '$lib/utils/highlighter';
@@ -18,6 +19,7 @@
 		fitCameraToModel,
 		type CameraState
 	} from '$lib/utils/camera';
+	import { MeasurementTool, type MeasurementData } from '$lib/utils/measurement';
 	import type {
 		FragmentsManager,
 		FragmentGroup,
@@ -32,6 +34,7 @@
 	let world: OBC.World | null = null;
 	let currentModel: FragmentGroup | null = null;
 	let cameraState: CameraState = { initialPosition: null, initialTarget: null };
+	let measurementTool: MeasurementTool | null = null;
 
 	// Reactive state
 	let isDragging = $state(false);
@@ -41,6 +44,8 @@
 	let selectedElement: SelectedElement | null = $state(null);
 	let currentFileName = $state('');
 	let ifcTree: TreeNode[] = $state([]);
+	let measurementEnabled = $state(false);
+	let measurements: MeasurementData[] = $state([]);
 	let compassAxes: CompassAxes = $state({
 		x: { x: 20, y: 0, z: 0 },
 		y: { x: 0, y: -20, z: 0 },
@@ -52,6 +57,7 @@
 	});
 
 	onDestroy(() => {
+		measurementTool?.dispose();
 		components?.dispose();
 	});
 
@@ -93,9 +99,64 @@
 		await setupIfcLoader();
 
 		// Setup highlighter
-		setupHighlighter(components, world, (element) => {
-			selectedElement = element;
+		setupHighlighter(
+			components,
+			world,
+			(element) => {
+				selectedElement = element;
+			},
+			() => measurementTool?.isEnabled ?? false
+		);
+
+		// Setup measurement tool
+		measurementTool = new MeasurementTool(components, world);
+		measurementTool.onEnabledChange = (enabled) => {
+			measurementEnabled = enabled;
+		};
+		measurementTool.onMeasurementsChange = (newMeasurements) => {
+			measurements = newMeasurements;
+		};
+
+		// Update measurement labels on camera update
+		world.camera.controls?.addEventListener('update', () => {
+			measurementTool?.updateLabels();
 		});
+
+		// Add measurement event listeners
+		const rendererEl = world.renderer?.three.domElement;
+		if (rendererEl) {
+			rendererEl.addEventListener('pointermove', handleMeasurementPointerMove);
+			rendererEl.addEventListener('dblclick', handleMeasurementDoubleClick);
+		}
+	}
+
+	function handleMeasurementPointerMove(event: MouseEvent) {
+		measurementTool?.handlePointerMove(event);
+	}
+
+	async function handleMeasurementDoubleClick(event: MouseEvent) {
+		if (measurementTool?.isEnabled) {
+			const handled = await measurementTool.handleDoubleClick(event);
+			if (handled) {
+				event.stopPropagation();
+			}
+		}
+	}
+
+	function handleMeasurementToggle() {
+		measurementTool?.toggle();
+		// Clear hover highlight when enabling measurement mode
+		if (measurementTool?.isEnabled && components) {
+			clearHoverHighlight(components);
+		}
+	}
+
+	function handleDeleteMeasurement(id: number) {
+		measurementTool?.deleteMeasurement(id);
+	}
+
+	function handleClearMeasurements() {
+		measurementTool?.clearAllMeasurements();
 	}
 
 	async function setupFragments() {
@@ -344,6 +405,11 @@
 			onTreeItemHover={handleTreeItemHover}
 			onVisibilityToggle={handleVisibilityToggle}
 			onClearSelection={handleClearSelection}
+			{measurementEnabled}
+			onMeasurementToggle={handleMeasurementToggle}
+			{measurements}
+			onDeleteMeasurement={handleDeleteMeasurement}
+			onClearMeasurements={handleClearMeasurements}
 		/>
 
 		<!-- Viewer Area -->
