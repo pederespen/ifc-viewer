@@ -172,26 +172,26 @@
 		highlighter.styles.set('select', {
 			color: new THREE.Color(0xf59e0b), // Amber/orange
 			opacity: 1,
-		transparent: false,
-		renderedFaces: 0
-	});
+			transparent: false,
+			renderedFaces: 0
+		});
 
-	// Configure tree selection style - transparent x-ray for seeing through
-	highlighter.styles.set('treeSelect', {
-		color: new THREE.Color(0x3b82f6), // Blue
-		opacity: 0.4,
-		transparent: true,
-		depthTest: false, // Render on top for x-ray effect
-		renderedFaces: 1
-	});
+		// Configure tree selection style - transparent x-ray for seeing through
+		highlighter.styles.set('treeSelect', {
+			color: new THREE.Color(0x3b82f6), // Blue
+			opacity: 0.4,
+			transparent: true,
+			depthTest: false, // Render on top for x-ray effect
+			renderedFaces: 1
+		});
 
-	// Setup hover style for instant highlighting - light blue
-	highlighter.styles.set('hover', {
-		color: new THREE.Color(0x93c5fd), // Light blue
-		opacity: 1,
-		transparent: false,
-		renderedFaces: 0
-	});		// Custom instant hover - bypasses Hoverer's 50ms debounce
+		// Setup hover style for instant highlighting - light blue
+		highlighter.styles.set('hover', {
+			color: new THREE.Color(0x93c5fd), // Light blue
+			opacity: 1,
+			transparent: false,
+			renderedFaces: 0
+		}); // Custom instant hover - bypasses Hoverer's 50ms debounce
 		const rendererEl = world.renderer?.three.domElement;
 		if (rendererEl) {
 			rendererEl.addEventListener('pointermove', () => {
@@ -246,7 +246,6 @@
 							ModelID: modelID
 						};
 					}
-
 				}
 			} catch (err) {
 				// Silently handle selection errors

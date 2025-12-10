@@ -61,7 +61,7 @@
 				</svg>
 				<!-- Tooltip -->
 				<div
-					class="pointer-events-none absolute left-full ml-2 hidden whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-sm text-white shadow-lg group-hover:block"
+					class="pointer-events-none absolute left-full ml-2 hidden rounded-md bg-gray-900 px-2 py-1 text-sm whitespace-nowrap text-white shadow-lg group-hover:block"
 				>
 					IFC Tree
 				</div>
@@ -94,7 +94,7 @@
 				</svg>
 				<!-- Tooltip -->
 				<div
-					class="pointer-events-none absolute left-full ml-2 hidden whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-sm text-white shadow-lg group-hover:block"
+					class="pointer-events-none absolute left-full ml-2 hidden rounded-md bg-gray-900 px-2 py-1 text-sm whitespace-nowrap text-white shadow-lg group-hover:block"
 				>
 					Properties
 				</div>
@@ -104,7 +104,7 @@
 
 	<!-- Slide-out Panel (Positioned Absolutely) -->
 	<div
-		class="absolute left-16 top-0 h-full overflow-hidden border-r border-gray-200 bg-white shadow-lg transition-all duration-300 ease-in-out {activePanel
+		class="absolute top-0 left-16 h-full overflow-hidden border-r border-gray-200 bg-white shadow-lg transition-all duration-300 ease-in-out {activePanel
 			? 'w-96'
 			: 'w-0'}"
 	>
