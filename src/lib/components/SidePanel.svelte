@@ -51,13 +51,15 @@
 			id: 'tree',
 			title: 'IFC Tree',
 			icon: 'tree',
-			content: 'Browse the building structure hierarchically. Click items to expand or collapse. Hover over items to highlight them in the 3D view with a transparent x-ray effect. Use the eye icon to toggle visibility of elements and their children.'
+			content:
+				'Browse the building structure hierarchically. Click items to expand or collapse. Hover over items to highlight them in the 3D view with a transparent x-ray effect. Use the eye icon to toggle visibility of elements and their children.'
 		},
 		{
 			id: 'properties',
 			title: 'Properties',
 			icon: 'properties',
-			content: 'Double-click any element in the 3D view to select it and view its properties. The properties panel shows all IFC attributes and property sets for the selected element.'
+			content:
+				'Double-click any element in the 3D view to select it and view its properties. The properties panel shows all IFC attributes and property sets for the selected element.'
 		}
 	];
 </script>
@@ -295,10 +297,18 @@
 			</div>
 			<div class="flex-1 overflow-y-auto p-4">
 				<p class="mb-4 text-sm text-gray-500">
-					A free, browser-based IFC viewer for exploring BIM models. Built with 
-					<a href="https://github.com/ThatOpen/engine_components" target="_blank" class="text-blue-600 hover:underline">That Open Engine</a> 
-					and 
-					<a href="https://github.com/IFCjs/web-ifc" target="_blank" class="text-blue-600 hover:underline">web-ifc</a>.
+					A free, browser-based IFC viewer for exploring BIM models. Built with
+					<a
+						href="https://github.com/ThatOpen/engine_components"
+						target="_blank"
+						class="text-blue-600 hover:underline">That Open Engine</a
+					>
+					and
+					<a
+						href="https://github.com/IFCjs/web-ifc"
+						target="_blank"
+						class="text-blue-600 hover:underline">web-ifc</a
+					>.
 				</p>
 				<div class="space-y-1">
 					{#each helpItems as item}
@@ -309,12 +319,30 @@
 							>
 								<span class="flex items-center gap-2 text-sm font-medium text-gray-700">
 									{#if item.icon === 'tree'}
-										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											class="h-4 w-4"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+										>
 											<path d="M3 3h4v4H3zM13 7h4v4h-4zM13 17h4v4h-4z" />
 											<path d="M5 7v6h8M5 13h8v4" />
 										</svg>
 									{:else if item.icon === 'properties'}
-										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											class="h-4 w-4"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+										>
 											<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
 											<polyline points="14 2 14 8 20 8" />
 											<line x1="16" y1="13" x2="8" y2="13" />
@@ -325,7 +353,9 @@
 								</span>
 								<svg
 									xmlns="http://www.w3.org/2000/svg"
-									class="h-4 w-4 text-gray-400 transition-transform {expandedHelpItems.has(item.id) ? 'rotate-180' : ''}"
+									class="h-4 w-4 text-gray-400 transition-transform {expandedHelpItems.has(item.id)
+										? 'rotate-180'
+										: ''}"
 									viewBox="0 0 24 24"
 									fill="none"
 									stroke="currentColor"
