@@ -2,6 +2,7 @@
 	import TreeView from './TreeView.svelte';
 	import type { TreeNode } from '$lib/utils/ifcTreeBuilder';
 	import type { MeasurementData, UnitSystem } from '$lib/utils/measurement';
+	import type { SliceData } from '$lib/utils/slicer';
 
 	interface Props {
 		tree: TreeNode[];
@@ -18,6 +19,11 @@
 		onClearMeasurements: () => void;
 		unitSystem: UnitSystem;
 		onUnitSystemChange: (unit: UnitSystem) => void;
+		slicerEnabled: boolean;
+		onSlicerToggle: () => void;
+		slices: SliceData[];
+		onDeleteSlice: (id: string) => void;
+		onClearSlices: () => void;
 	}
 
 	let {
@@ -34,7 +40,12 @@
 		onDeleteMeasurement,
 		onClearMeasurements,
 		unitSystem,
-		onUnitSystemChange
+		onUnitSystemChange,
+		slicerEnabled,
+		onSlicerToggle,
+		slices,
+		onDeleteSlice,
+		onClearSlices
 	}: Props = $props();
 
 	let activePanel: string | null = $state(null);
@@ -53,6 +64,17 @@
 			// Clear any selection when entering measure mode
 			onClearSelection();
 			onMeasurementToggle();
+		}
+
+		// Disable slicer mode when leaving slicer panel (but keep existing slices)
+		if (activePanel !== 'slicer' && slicerEnabled) {
+			onSlicerToggle();
+		}
+
+		// Enable slicer mode when entering slicer panel
+		if (activePanel === 'slicer' && !slicerEnabled) {
+			onClearSelection();
+			onSlicerToggle();
 		}
 	}
 
@@ -82,18 +104,25 @@
 				'Browse the building structure hierarchically. Click items to expand or collapse. Hover over items to highlight them in the 3D view with a transparent x-ray effect. Use the eye icon to toggle visibility of elements and their children.'
 		},
 		{
-			id: 'properties',
-			title: 'Properties',
-			icon: 'properties',
-			content:
-				'Double-click any element in the 3D view to select it and view its properties. The properties panel shows all IFC attributes and property sets for the selected element.'
-		},
-		{
 			id: 'measure',
 			title: 'Measure',
 			icon: 'measure',
 			content:
-				'Toggle measure mode to measure distances. Double-click to place the first point, then double-click again to complete the measurement. The distance is shown on the line.'
+				'Measure distances in your model. Double-click to place the first point, then double-click again to complete the measurement. The distance is shown on the line.'
+		},
+		{
+			id: 'slicer',
+			title: 'Slicer',
+			icon: 'slicer',
+			content:
+				'Create clipping planes to cut through your model. Double-click on any surface to create a plane. Drag the arrow to move it along its axis. Use the X button to remove planes.'
+		},
+		{
+			id: 'properties',
+			title: 'Properties',
+			icon: 'properties',
+			content:
+				'View element details. Double-click any element in the 3D view to select it and see all its IFC attributes and property sets.'
 		}
 	];
 </script>
@@ -101,8 +130,10 @@
 <!-- Side Panel Container -->
 <div class="relative z-10 flex h-full w-16">
 	<!-- Icon Sidebar (Always Visible) -->
-	<div class="flex h-full w-16 flex-col border-r border-gray-200 bg-gray-800 shadow-sm">
-		<!-- Menu Items -->
+	<div
+		class="flex h-full w-16 flex-col justify-between border-r border-gray-200 bg-gray-800 shadow-sm"
+	>
+		<!-- Top Menu Items -->
 		<div class="flex flex-col gap-1 p-2">
 			<!-- IFC Tree Icon -->
 			<button
@@ -171,6 +202,41 @@
 				</div>
 			</button>
 
+			<!-- Slicer Icon -->
+			<button
+				onclick={() => togglePanel('slicer')}
+				class="group relative flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg transition-colors {activePanel ===
+				'slicer'
+					? 'bg-blue-600 text-white'
+					: slicerEnabled
+						? 'bg-green-600 text-white'
+						: 'text-gray-300 hover:bg-gray-700 hover:text-white'}"
+				aria-label="Slicer"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-6 w-6"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<circle cx="6" cy="6" r="3" />
+					<circle cx="6" cy="18" r="3" />
+					<line x1="20" y1="4" x2="8.12" y2="15.88" />
+					<line x1="14.47" y1="14.48" x2="20" y2="20" />
+					<line x1="8.12" y1="8.12" x2="12" y2="12" />
+				</svg>
+				<!-- Tooltip -->
+				<div
+					class="pointer-events-none absolute left-full ml-2 hidden rounded-md bg-gray-900 px-2 py-1 text-sm whitespace-nowrap text-white shadow-lg group-hover:block"
+				>
+					Slicer
+				</div>
+			</button>
+
 			<!-- Properties Icon -->
 			<button
 				onclick={() => togglePanel('properties')}
@@ -203,7 +269,10 @@
 					Properties
 				</div>
 			</button>
+		</div>
 
+		<!-- Bottom Menu Items -->
+		<div class="flex flex-col gap-1 p-2">
 			<!-- Settings Icon -->
 			<button
 				onclick={() => togglePanel('settings')}
@@ -400,7 +469,10 @@
 			</div>
 			<div class="flex-1 overflow-y-auto p-4">
 				<p class="mb-4 text-sm text-gray-500">
-					A free, browser-based IFC viewer for exploring BIM models. Built with
+					A free, browser-based IFC viewer for exploring BIM models. <strong class="text-gray-600"
+						>100% local — your files never leave your browser.</strong
+					>
+					Built with
 					<a
 						href="https://github.com/ThatOpen/engine_components"
 						target="_blank"
@@ -469,6 +541,23 @@
 											<path d="m11.5 9.5 2-2" />
 											<path d="m8.5 6.5 2-2" />
 											<path d="m17.5 15.5 2-2" />
+										</svg>
+									{:else if item.icon === 'slicer'}
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											class="h-4 w-4"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+										>
+											<circle cx="6" cy="6" r="3" />
+											<circle cx="6" cy="18" r="3" />
+											<line x1="20" y1="4" x2="8.12" y2="15.88" />
+											<line x1="14.47" y1="14.48" x2="20" y2="20" />
+											<line x1="8.12" y1="8.12" x2="12" y2="12" />
 										</svg>
 									{/if}
 									{item.title}
@@ -575,6 +664,83 @@
 			</div>
 		</div>
 
+		<!-- Slicer Panel -->
+		<div class="flex h-full w-96 flex-col {activePanel === 'slicer' ? '' : 'hidden'}">
+			<div class="flex h-14 items-center justify-between border-b border-gray-200 px-4">
+				<h2 class="font-semibold text-gray-900">Slicer</h2>
+				<button
+					onclick={() => togglePanel('slicer')}
+					class="cursor-pointer rounded p-1 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+					aria-label="Close panel"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-5 w-5"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<line x1="18" y1="6" x2="6" y2="18" />
+						<line x1="6" y1="6" x2="18" y2="18" />
+					</svg>
+				</button>
+			</div>
+			<div class="flex-1 overflow-y-auto p-4">
+				<p class="mb-4 text-sm text-gray-500">
+					Double-click on a surface to create a clipping plane. Drag the plane's arrow to move it
+					along its axis.
+				</p>
+
+				<!-- Slices list -->
+				{#if slices.length > 0}
+					<div class="space-y-2">
+						<div class="flex items-center justify-between">
+							<h3 class="text-sm font-medium text-gray-700">Clipping Planes</h3>
+							<button onclick={onClearSlices} class="text-xs text-gray-500 hover:text-red-600">
+								Clear all
+							</button>
+						</div>
+						{#each slices as slice, index}
+							<div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+								<div class="flex items-center gap-2">
+									<span
+										class="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-xs font-medium text-blue-800"
+									>
+										{index + 1}
+									</span>
+									<span class="text-sm text-gray-700">
+										Plane {index + 1}
+									</span>
+								</div>
+								<button
+									onclick={() => onDeleteSlice(slice.id)}
+									class="rounded p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-red-600"
+									aria-label="Delete slice"
+								>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										class="h-4 w-4"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									>
+										<line x1="18" y1="6" x2="6" y2="18" />
+										<line x1="6" y1="6" x2="18" y2="18" />
+									</svg>
+								</button>
+							</div>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		</div>
+
 		<!-- Settings Panel -->
 		<div class="flex h-full w-96 flex-col {activePanel === 'settings' ? '' : 'hidden'}">
 			<div class="flex h-14 items-center justify-between border-b border-gray-200 px-4">
@@ -601,34 +767,31 @@
 			</div>
 			<div class="flex-1 overflow-y-auto p-4">
 				<!-- Unit System Setting -->
-				<div class="space-y-4">
-					<div>
-						<h3 class="mb-2 text-sm font-medium text-gray-700">Unit System</h3>
-						<p class="mb-3 text-xs text-gray-500">Choose how measurements are displayed</p>
-						<div class="flex gap-2">
-							<button
-								onclick={() => onUnitSystemChange('metric')}
-								class="flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors {unitSystem ===
-								'metric'
-									? 'bg-blue-600 text-white'
-									: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
-							>
-								Metric
-							</button>
-							<button
-								onclick={() => onUnitSystemChange('imperial')}
-								class="flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors {unitSystem ===
-								'imperial'
-									? 'bg-blue-600 text-white'
-									: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
-							>
-								Imperial
-							</button>
-						</div>
-						<p class="mt-2 text-xs text-gray-400">
-							{unitSystem === 'metric' ? 'Meters (m)' : 'Feet and inches (ft-in)'}
-						</p>
+				<div>
+					<h3 class="mb-3 text-sm font-medium text-gray-700">Unit System</h3>
+					<div class="flex gap-2">
+						<button
+							onclick={() => onUnitSystemChange('metric')}
+							class="flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors {unitSystem ===
+							'metric'
+								? 'bg-blue-600 text-white'
+								: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+						>
+							Metric
+						</button>
+						<button
+							onclick={() => onUnitSystemChange('imperial')}
+							class="flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors {unitSystem ===
+							'imperial'
+								? 'bg-blue-600 text-white'
+								: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+						>
+							Imperial
+						</button>
 					</div>
+					<p class="mt-2 text-xs text-gray-400">
+						{unitSystem === 'metric' ? 'Meters (m)' : 'Feet and inches (ft-in)'}
+					</p>
 				</div>
 			</div>
 		</div>

@@ -20,6 +20,7 @@
 		type CameraState
 	} from '$lib/utils/camera';
 	import { MeasurementTool, type MeasurementData, type UnitSystem } from '$lib/utils/measurement';
+	import { SlicerTool, type SliceData } from '$lib/utils/slicer';
 	import type {
 		FragmentsManager,
 		FragmentGroup,
@@ -35,6 +36,7 @@
 	let currentModel: FragmentGroup | null = null;
 	let cameraState: CameraState = { initialPosition: null, initialTarget: null };
 	let measurementTool: MeasurementTool | null = null;
+	let slicerTool: SlicerTool | null = null;
 
 	// Reactive state
 	let isDragging = $state(false);
@@ -47,6 +49,8 @@
 	let measurementEnabled = $state(false);
 	let measurements: MeasurementData[] = $state([]);
 	let unitSystem: UnitSystem = $state('metric');
+	let slicerEnabled = $state(false);
+	let slices: SliceData[] = $state([]);
 	let compassAxes: CompassAxes = $state({
 		x: { x: 20, y: 0, z: 0 },
 		y: { x: 0, y: -20, z: 0 },
@@ -59,6 +63,7 @@
 
 	onDestroy(() => {
 		measurementTool?.dispose();
+		slicerTool?.dispose();
 		components?.dispose();
 	});
 
@@ -106,7 +111,7 @@
 			(element) => {
 				selectedElement = element;
 			},
-			() => measurementTool?.isEnabled ?? false
+			() => (measurementTool?.isEnabled || slicerTool?.isEnabled) ?? false
 		);
 
 		// Setup measurement tool
@@ -118,6 +123,15 @@
 			measurements = newMeasurements;
 		};
 
+		// Setup slicer tool
+		slicerTool = new SlicerTool(components, world);
+		slicerTool.onEnabledChange = (enabled) => {
+			slicerEnabled = enabled;
+		};
+		slicerTool.onSlicesChange = (newSlices) => {
+			slices = newSlices;
+		};
+
 		// Update measurement labels on camera update
 		world.camera.controls?.addEventListener('update', () => {
 			measurementTool?.updateLabels();
@@ -127,7 +141,7 @@
 		const rendererEl = world.renderer?.three.domElement;
 		if (rendererEl) {
 			rendererEl.addEventListener('pointermove', handleMeasurementPointerMove);
-			rendererEl.addEventListener('dblclick', handleMeasurementDoubleClick);
+			rendererEl.addEventListener('dblclick', handleToolsDoubleClick);
 		}
 	}
 
@@ -135,21 +149,53 @@
 		measurementTool?.handlePointerMove(event);
 	}
 
-	async function handleMeasurementDoubleClick(event: MouseEvent) {
+	async function handleToolsDoubleClick(event: MouseEvent) {
+		// Handle measurement tool double click
 		if (measurementTool?.isEnabled) {
 			const handled = await measurementTool.handleDoubleClick(event);
 			if (handled) {
 				event.stopPropagation();
+				return;
+			}
+		}
+		// Handle slicer tool double click
+		if (slicerTool?.isEnabled) {
+			const handled = await slicerTool.handleDoubleClick();
+			if (handled) {
+				event.stopPropagation();
+				return;
 			}
 		}
 	}
 
 	function handleMeasurementToggle() {
 		measurementTool?.toggle();
-		// Clear hover highlight when enabling measurement mode
-		if (measurementTool?.isEnabled && components) {
-			clearHoverHighlight(components);
+		// Disable slicer when enabling measurement
+		if (measurementTool?.isEnabled) {
+			slicerTool?.disable();
+			if (components) {
+				clearHoverHighlight(components);
+			}
 		}
+	}
+
+	function handleSlicerToggle() {
+		slicerTool?.toggle();
+		// Disable measurement when enabling slicer
+		if (slicerTool?.isEnabled) {
+			measurementTool?.disable();
+			if (components) {
+				clearHoverHighlight(components);
+			}
+		}
+	}
+
+	function handleDeleteSlice(id: string) {
+		slicerTool?.deleteSlice(id);
+	}
+
+	function handleClearSlices() {
+		slicerTool?.clearAllSlices();
 	}
 
 	function handleDeleteMeasurement(id: number) {
@@ -420,6 +466,11 @@
 			onClearMeasurements={handleClearMeasurements}
 			{unitSystem}
 			onUnitSystemChange={handleUnitSystemChange}
+			{slicerEnabled}
+			onSlicerToggle={handleSlicerToggle}
+			{slices}
+			onDeleteSlice={handleDeleteSlice}
+			onClearSlices={handleClearSlices}
 		/>
 
 		<!-- Viewer Area -->
