@@ -185,13 +185,24 @@
 			renderedFaces: 1
 		});
 
-		// Setup hover style for instant highlighting - light blue
+		// Setup hover style for instant highlighting - light blue (solid for 3D viewer)
 		highlighter.styles.set('hover', {
 			color: new THREE.Color(0x93c5fd), // Light blue
 			opacity: 1,
 			transparent: false,
 			renderedFaces: 0
-		}); // Custom instant hover - bypasses Hoverer's 50ms debounce
+		});
+
+		// Setup tree hover style - transparent x-ray for tree menu hovering
+		highlighter.styles.set('treeHover', {
+			color: new THREE.Color(0x6366f1), // Indigo/purple-blue
+			opacity: 0.4,
+			transparent: true,
+			renderedFaces: 1,
+			depthTest: false // X-ray effect
+		});
+
+		// Custom instant hover - bypasses Hoverer's 50ms debounce
 		const rendererEl = world.renderer?.three.domElement;
 		if (rendererEl) {
 			rendererEl.addEventListener('pointermove', () => {
@@ -538,6 +549,7 @@
 		if (highlighter) {
 			highlighter.clear('select');
 			highlighter.clear('treeSelect');
+			highlighter.clear('treeHover');
 		}
 		selectedElement = null;
 	}
@@ -572,8 +584,8 @@
 		if (!highlighter) return;
 
 		try {
-			// Clear hover highlight
-			highlighter.clear('hover');
+			// Clear tree hover highlight
+			highlighter.clear('treeHover');
 
 			if (item) {
 				// Collect all expressIDs from this node and its children
@@ -589,7 +601,7 @@
 						const modelIdMap: OBC.ModelIdMap = {
 							[modelName]: new Set(ids)
 						};
-						highlighter.highlightByID('hover', modelIdMap, true, false);
+						highlighter.highlightByID('treeHover', modelIdMap, true, false);
 					}
 				}
 			}
