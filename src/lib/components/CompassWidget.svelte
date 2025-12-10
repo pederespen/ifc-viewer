@@ -24,9 +24,16 @@
 	<div class="p-2">
 		<svg class="h-28 w-28" viewBox="-44 -44 88 88">
 			<circle cx="0" cy="0" r="40" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+
+			<!-- Center dot rendered first (behind everything for 3D effect) -->
+			<circle cx="0" cy="0" r="4" fill="#374151" stroke="white" stroke-width="1" />
+
+			<!-- Render axes in depth order (back to front) -->
 			{#each axes as { axis, color, data }}
 				{@const opacity = 0.5 + (data.z + 1) * 0.25}
 				{@const strokeWidth = 2.5 + (data.z + 1) * 0.5}
+
+				<!-- Shadow for line -->
 				<line
 					x1="1"
 					y1="1"
@@ -36,6 +43,8 @@
 					stroke-width={strokeWidth + 1}
 					stroke-linecap="round"
 				/>
+
+				<!-- Axis line -->
 				<line
 					x1="0"
 					y1="0"
@@ -46,8 +55,14 @@
 					stroke-linecap="round"
 					{opacity}
 				/>
+
+				<!-- Shadow for circle -->
 				<circle cx={data.x + 1} cy={data.y + 1} r={8 + (data.z + 1) * 1} fill="rgba(0,0,0,0.15)" />
+
+				<!-- Axis circle -->
 				<circle cx={data.x} cy={data.y} r={8 + (data.z + 1) * 1} fill={color} {opacity} />
+
+				<!-- Axis label -->
 				<text
 					x={data.x}
 					y={data.y}
@@ -58,7 +73,6 @@
 					font-weight="bold">{axis.toUpperCase()}</text
 				>
 			{/each}
-			<circle cx="0" cy="0" r="4" fill="#374151" stroke="white" stroke-width="1" />
 		</svg>
 	</div>
 	<div class="h-px w-full bg-gray-200"></div>

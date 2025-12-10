@@ -312,24 +312,37 @@
 			await new Promise((resolve) => setTimeout(resolve, 100)); // Let UI update
 
 			const model = await ifcLoader.load?.(new Uint8Array(data), false, file.name);
+
+			// Hide model initially to prevent visual jump during camera fitting
 			if (model?.object) {
+				model.object.visible = false;
 				world.scene.three.add(model.object);
 			}
 
 			currentModel = model as FragmentGroup;
 			currentFileName = file.name;
-			hasModel = true;
 			selectedElement = null;
 
-			// Fit camera with retry
+			// Fit camera first, then show model and update state
 			let retryCount = 0;
 			const tryFit = async () => {
 				const state = await fitCameraToModel(world!, components!, currentModel);
 				if (state) {
 					cameraState = state;
+					// Show model after camera is positioned
+					if (model?.object) {
+						model.object.visible = true;
+					}
+					hasModel = true;
 					setTimeout(updateCompass, 50);
 				} else if (retryCount++ < 10) {
 					setTimeout(tryFit, 200);
+				} else {
+					// Fallback: show model even if camera fit failed
+					if (model?.object) {
+						model.object.visible = true;
+					}
+					hasModel = true;
 				}
 			};
 			setTimeout(tryFit, 300);
