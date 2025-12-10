@@ -5,7 +5,7 @@
 	interface Props {
 		tree: TreeNode[];
 		hasModel: boolean;
-		selectedElement: any;
+		selectedElement: Record<string, unknown> | null;
 		onTreeItemClick: (node: TreeNode) => void;
 		onTreeItemHover: (node: TreeNode | null) => void;
 		onVisibilityToggle: (node: TreeNode) => void;

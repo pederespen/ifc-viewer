@@ -1,4 +1,5 @@
 import * as OBC from '@thatopen/components';
+import type { FragmentsManager, FragmentGroup, SpatialStructureItem, ItemData } from '$lib/types/viewer';
 
 export interface TreeNode {
 	id: string;
@@ -9,7 +10,9 @@ export interface TreeNode {
 	children: TreeNode[];
 }
 
-// Helper to collect all expressIDs from a node and its descendants
+/**
+ * Collect all expressIDs from a node and its descendants
+ */
 export function collectExpressIDs(node: TreeNode): number[] {
 	const ids: number[] = [];
 	if (node.expressID !== undefined) {
@@ -21,26 +24,39 @@ export function collectExpressIDs(node: TreeNode): number[] {
 	return ids;
 }
 
+/**
+ * Extract value from IFC property (handles {value, type} objects)
+ */
+function getValue(val: unknown): string | null {
+	if (!val) return null;
+	if (typeof val === 'string') return val;
+	if (typeof val === 'object' && val !== null && 'value' in val) {
+		return (val as { value: string }).value;
+	}
+	return null;
+}
+
+/**
+ * Build IFC tree structure from loaded model
+ */
 export async function buildIFCTree(
 	components: OBC.Components | null,
-	currentModel: any
+	currentModel: FragmentGroup | null
 ): Promise<TreeNode[]> {
 	if (!currentModel || !components) {
 		return [];
 	}
 
 	try {
-		const fragments = components.get(OBC.FragmentsManager);
-		const fragmentsList = (fragments as any).list;
+		const fragments = components.get(OBC.FragmentsManager) as unknown as FragmentsManager;
 
-		if (!fragmentsList || fragmentsList.size === 0) {
+		if (!fragments.list || fragments.list.size === 0) {
 			return [];
 		}
 
 		const tree: TreeNode[] = [];
 
-		// Get all fragment groups (models)
-		for (const [modelID, model] of fragmentsList) {
+		for (const [modelID, model] of fragments.list) {
 			try {
 				const modelNode: TreeNode = {
 					id: modelID,
@@ -50,62 +66,51 @@ export async function buildIFCTree(
 					children: []
 				};
 
-				// Try to get spatial structure using ThatOpen API
-				try {
-					const spatialStructure = await model.getSpatialStructure();
-
-					if (spatialStructure) {
-						await buildSpatialTree(model, spatialStructure, modelNode.children);
-					} else {
-						await buildSimpleTree(model, modelNode.children);
-					}
-				} catch (err) {
+				// Try spatial structure first
+				const spatialStructure = await model.getSpatialStructure?.();
+				if (spatialStructure) {
+					await buildSpatialTree(model, spatialStructure, modelNode.children);
+				} else {
 					await buildSimpleTree(model, modelNode.children);
 				}
 
 				tree.push(modelNode);
-			} catch (err) {
-				console.error('Error processing model:', err);
+			} catch {
 				tree.push({
 					id: modelID,
 					name: model.name || 'IFC Model',
 					type: 'Model',
 					visible: true,
-					children: [
-						{
-							id: `${modelID}-error`,
-							name: `Error loading structure: ${err}`,
-							type: 'Error',
-							visible: true,
-							children: []
-						}
-					]
+					children: [{
+						id: `${modelID}-error`,
+						name: 'Error loading structure',
+						type: 'Error',
+						visible: true,
+						children: []
+					}]
 				});
 			}
 		}
 
 		return tree;
-	} catch (err) {
+	} catch {
 		return [];
 	}
 }
 
+/**
+ * Build tree from spatial structure
+ */
 async function buildSpatialTree(
-	model: any,
-	spatialItem: any,
+	model: FragmentGroup,
+	spatialItem: SpatialStructureItem,
 	parentChildren: TreeNode[]
 ): Promise<void> {
 	try {
-		// Handle the two-level structure from getSpatialStructure:
-		// Level 1: {category: 'IFCPROJECT', localId: null, children: [...]}
-		// Level 2: {category: null, localId: 1, children: [...]}
-
-		// If this is a category node (has category but no localId)
+		// Category node without localId - process children
 		if (spatialItem.category && spatialItem.localId === null) {
-			// Process children but pass down the category
-			if (spatialItem.children && Array.isArray(spatialItem.children)) {
+			if (spatialItem.children?.length) {
 				for (const child of spatialItem.children) {
-					// Pass the parent category to children that don't have one
 					if (child.localId !== null && !child.category) {
 						child.category = spatialItem.category;
 					}
@@ -115,42 +120,28 @@ async function buildSpatialTree(
 			return;
 		}
 
-		// This is an actual element node (has localId)
+		// Element node with localId
 		if (spatialItem.localId !== null && spatialItem.localId !== undefined) {
-			// Get item data for this element
-			let itemData: any = null;
 			let elementName = `Element ${spatialItem.localId}`;
 			let elementType = spatialItem.category || 'Element';
 
 			try {
-				// Request item data with attributes
-				const itemsData = await model.getItemsData([spatialItem.localId], {
+				const itemsData = await model.getItemsData?.([spatialItem.localId], {
 					includeAttributes: true
 				});
 
-				if (itemsData && itemsData.length > 0) {
-					itemData = itemsData[0];
-
-					// Get the value from objects like {value: 'Name', type: 'IFCLABEL'}
-					const getValue = (val: any) => {
-						if (!val) return null;
-						if (typeof val === 'string') return val;
-						if (typeof val === 'object' && val.value) return val.value;
-						return null;
-					};
-
+				if (itemsData?.length) {
+					const itemData = itemsData[0] as ItemData;
 					elementName =
 						getValue(itemData.Name) ||
 						getValue(itemData.name) ||
 						getValue(itemData.LongName) ||
 						getValue(itemData.longName) ||
 						`${elementType} ${spatialItem.localId}`;
-
-					// Get the category/type - data comes with underscore prefix like _category
 					elementType = getValue(itemData._category) || spatialItem.category || 'Element';
 				}
-			} catch (err) {
-				// Silently fail and use default names
+			} catch {
+				// Use default names
 			}
 
 			const node: TreeNode = {
@@ -162,8 +153,7 @@ async function buildSpatialTree(
 				children: []
 			};
 
-			// Process children recursively
-			if (spatialItem.children && Array.isArray(spatialItem.children)) {
+			if (spatialItem.children?.length) {
 				for (const child of spatialItem.children) {
 					await buildSpatialTree(model, child, node.children);
 				}
@@ -171,91 +161,78 @@ async function buildSpatialTree(
 
 			parentChildren.push(node);
 		}
-	} catch (err) {
-		// Silently handle error
+	} catch {
+		// Silently handle errors
 	}
 }
 
-async function buildSimpleTree(model: any, parentChildren: TreeNode[]) {
+/**
+ * Build simple tree grouped by type
+ */
+async function buildSimpleTree(model: FragmentGroup, parentChildren: TreeNode[]): Promise<void> {
+	const commonTypes = [
+		/WALL/, /WINDOW/, /DOOR/, /SLAB/, /BEAM/, /COLUMN/, /SPACE/,
+		/BUILDING/, /STOREY/, /SITE/, /PROJECT/, /ROOF/, /STAIR/,
+		/RAILING/, /FURNISHING/, /PLATE/, /MEMBER/, /COVERING/, /FOOTING/, /PILE/
+	];
+
 	try {
+		const itemsByCategory = await model.getItemsOfCategories?.(commonTypes);
+		if (!itemsByCategory) {
+			parentChildren.push({
+				id: 'no-items',
+				name: 'No items found in model',
+				type: 'Info',
+				visible: true,
+				children: []
+			});
+			return;
+		}
+
 		const itemsByType = new Map<string, TreeNode[]>();
 		let totalItems = 0;
 
-		// Use the correct ThatOpen API: getItemsOfCategories
-		const commonTypes = [
-			/WALL/,
-			/WINDOW/,
-			/DOOR/,
-			/SLAB/,
-			/BEAM/,
-			/COLUMN/,
-			/SPACE/,
-			/BUILDING/,
-			/STOREY/,
-			/SITE/,
-			/PROJECT/,
-			/ROOF/,
-			/STAIR/,
-			/RAILING/,
-			/FURNISHING/,
-			/PLATE/,
-			/MEMBER/,
-			/COVERING/,
-			/FOOTING/,
-			/PILE/
-		];
+		for (const [category, localIds] of Object.entries(itemsByCategory)) {
+			if (!localIds?.length) continue;
 
-		try {
-			// Get items grouped by category
-			const itemsByCategory = await model.getItemsOfCategories(commonTypes);
+			const items: TreeNode[] = [];
+			const idsToFetch = localIds.slice(0, 50); // Limit for performance
 
-			// For each category, get the item data
-			for (const [category, localIds] of Object.entries(itemsByCategory)) {
-				if (localIds && Array.isArray(localIds) && localIds.length > 0) {
-					const items: TreeNode[] = [];
-
-					// Get item data for all items in this category (limit to 50 per type for performance)
-					const idsToFetch = localIds.slice(0, 50);
-
-					try {
-						const itemsData = await model.getItemsData(idsToFetch);
-
-						for (let i = 0; i < itemsData.length; i++) {
-							const itemData = itemsData[i];
-							const localId = idsToFetch[i];
-
-							items.push({
-								id: `${model.modelId || 'model'}-${localId}`,
-								name: itemData.name || `${category} ${localId}`,
-								type: category,
-								expressID: localId,
-								visible: true,
-								children: []
-							});
-							totalItems++;
-						}
-					} catch (err) {
-						// Create basic nodes without detailed data
-						for (const localId of idsToFetch) {
-							items.push({
-								id: `${model.modelId || 'model'}-${localId}`,
-								name: `${category} ${localId}`,
-								type: category,
-								expressID: localId,
-								visible: true,
-								children: []
-							});
-							totalItems++;
-						}
-					}
-
-					if (items.length > 0) {
-						itemsByType.set(category, items);
+			try {
+				const itemsData = await model.getItemsData?.(idsToFetch);
+				if (itemsData) {
+					for (let i = 0; i < itemsData.length; i++) {
+						const itemData = itemsData[i] as ItemData;
+						const localId = idsToFetch[i];
+						items.push({
+							id: `${model.modelId || 'model'}-${localId}`,
+							name: getValue(itemData.Name) || getValue(itemData.name) || `${category} ${localId}`,
+							type: category,
+							expressID: localId,
+							visible: true,
+							children: []
+						});
+						totalItems++;
 					}
 				}
+			} catch {
+				// Create basic nodes without detailed data
+				for (const localId of idsToFetch) {
+					items.push({
+						id: `${model.modelId || 'model'}-${localId}`,
+						name: `${category} ${localId}`,
+						type: category,
+						expressID: localId,
+						visible: true,
+						children: []
+					});
+					totalItems++;
+				}
 			}
-		} catch (err) {
-			// Silently handle error
+
+			if (items.length > 0) {
+				itemsByType.set(category, items);
+			}
 		}
 
 		if (totalItems === 0) {
@@ -269,7 +246,6 @@ async function buildSimpleTree(model: any, parentChildren: TreeNode[]) {
 			return;
 		}
 
-		// Create type groups
 		for (const [typeName, items] of itemsByType) {
 			parentChildren.push({
 				id: `type-${typeName}`,
@@ -279,10 +255,10 @@ async function buildSimpleTree(model: any, parentChildren: TreeNode[]) {
 				children: items
 			});
 		}
-	} catch (err) {
+	} catch {
 		parentChildren.push({
 			id: 'error',
-			name: `Error: ${err}`,
+			name: 'Error building tree',
 			type: 'Error',
 			visible: true,
 			children: []

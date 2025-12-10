@@ -98,7 +98,7 @@
 
 			<!-- Visibility toggle button -->
 			<button
-				class="flex-shrink-0 rounded p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600"
+				class="flex-shrink-0 cursor-pointer rounded p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600"
 				onclick={(e) => handleVisibilityClick(e, node)}
 				title={node.visible ? 'Hide' : 'Show'}
 			>
