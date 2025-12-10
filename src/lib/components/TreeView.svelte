@@ -48,7 +48,7 @@
 {/if}
 
 {#snippet treeNode(node: TreeNode, depth: number)}
-	<div class="select-none" style="padding-left: {depth * 16}px">
+	<div class="select-none" style="padding-left: {depth * 4}px">
 		<div
 			class="group flex cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 transition-colors hover:border-blue-200 hover:bg-blue-50 {!node.visible
 				? 'opacity-50'

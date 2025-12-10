@@ -17,9 +17,7 @@
 	let selectedElement: any = $state(null);
 	let currentModel: any = null;
 	let currentFileName = $state<string>('');
-	let sidePanelOpen = $state(true);
 	let ifcTree: TreeNode[] = $state([]);
-	let sidePanelRef: any;
 	let hiddenExpressIDs = $state(new Set<number>());
 	let compassAxes = $state({
 		x: { x: 20, y: 0, z: 0 },
@@ -174,28 +172,26 @@
 		highlighter.styles.set('select', {
 			color: new THREE.Color(0xf59e0b), // Amber/orange
 			opacity: 1,
-			transparent: false,
-			renderedFaces: 0
-		});
+		transparent: false,
+		renderedFaces: 0
+	});
 
-		// Configure tree selection style - transparent x-ray for seeing through
-		highlighter.styles.set('treeSelect', {
-			color: new THREE.Color(0xf59e0b), // Amber/orange
-			opacity: 0.8,
-			transparent: true,
-			renderedFaces: 1,
-			depthTest: false // Render on top for x-ray effect
-		});
+	// Configure tree selection style - transparent x-ray for seeing through
+	highlighter.styles.set('treeSelect', {
+		color: new THREE.Color(0x3b82f6), // Blue
+		opacity: 0.4,
+		transparent: true,
+		depthTest: false, // Render on top for x-ray effect
+		renderedFaces: 1
+	});
 
-		// Setup hover style for instant highlighting - light blue
-		highlighter.styles.set('hover', {
-			color: new THREE.Color(0x93c5fd), // Light blue
-			opacity: 1,
-			transparent: false,
-			renderedFaces: 0
-		});
-
-		// Custom instant hover - bypasses Hoverer's 50ms debounce
+	// Setup hover style for instant highlighting - light blue
+	highlighter.styles.set('hover', {
+		color: new THREE.Color(0x93c5fd), // Light blue
+		opacity: 1,
+		transparent: false,
+		renderedFaces: 0
+	});		// Custom instant hover - bypasses Hoverer's 50ms debounce
 		const rendererEl = world.renderer?.three.domElement;
 		if (rendererEl) {
 			rendererEl.addEventListener('pointermove', () => {
@@ -251,14 +247,6 @@
 						};
 					}
 
-					// Auto-open properties section when element is selected
-					if (sidePanelRef) {
-						sidePanelRef.setActiveAccordion('properties');
-					}
-					// Auto-open side panel if closed
-					if (!sidePanelOpen) {
-						sidePanelOpen = true;
-					}
 				}
 			} catch (err) {
 				// Silently handle selection errors
@@ -546,10 +534,6 @@
 		input?.click();
 	}
 
-	function toggleSidePanel() {
-		sidePanelOpen = !sidePanelOpen;
-	}
-
 	function handleClearSelection() {
 		const highlighter = components?.get(OBCF.Highlighter);
 		if (highlighter) {
@@ -697,12 +681,9 @@
 	<div class="relative flex flex-1 overflow-hidden">
 		<!-- Side Panel Component -->
 		<SidePanel
-			bind:this={sidePanelRef}
-			isOpen={sidePanelOpen}
 			tree={ifcTree}
 			{hasModel}
 			{selectedElement}
-			onToggle={toggleSidePanel}
 			onTreeItemClick={handleTreeItemClick}
 			onTreeItemHover={handleTreeItemHover}
 			onVisibilityToggle={handleVisibilityToggle}
