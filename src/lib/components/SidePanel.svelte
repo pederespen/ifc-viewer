@@ -1,7 +1,7 @@
 <script lang="ts">
 	import TreeView from './TreeView.svelte';
 	import type { TreeNode } from '$lib/utils/ifcTreeBuilder';
-	import type { MeasurementData } from '$lib/utils/measurement';
+	import type { MeasurementData, UnitSystem } from '$lib/utils/measurement';
 
 	interface Props {
 		tree: TreeNode[];
@@ -16,6 +16,8 @@
 		measurements: MeasurementData[];
 		onDeleteMeasurement: (id: number) => void;
 		onClearMeasurements: () => void;
+		unitSystem: UnitSystem;
+		onUnitSystemChange: (unit: UnitSystem) => void;
 	}
 
 	let {
@@ -30,7 +32,9 @@
 		onMeasurementToggle,
 		measurements,
 		onDeleteMeasurement,
-		onClearMeasurements
+		onClearMeasurements,
+		unitSystem,
+		onUnitSystemChange
 	}: Props = $props();
 
 	let activePanel: string | null = $state(null);
@@ -197,6 +201,38 @@
 					class="pointer-events-none absolute left-full ml-2 hidden rounded-md bg-gray-900 px-2 py-1 text-sm whitespace-nowrap text-white shadow-lg group-hover:block"
 				>
 					Properties
+				</div>
+			</button>
+
+			<!-- Settings Icon -->
+			<button
+				onclick={() => togglePanel('settings')}
+				class="group relative flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg transition-colors {activePanel ===
+				'settings'
+					? 'bg-blue-600 text-white'
+					: 'text-gray-300 hover:bg-gray-700 hover:text-white'}"
+				aria-label="Settings"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-6 w-6"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<circle cx="12" cy="12" r="3" />
+					<path
+						d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+					/>
+				</svg>
+				<!-- Tooltip -->
+				<div
+					class="pointer-events-none absolute left-full ml-2 hidden rounded-md bg-gray-900 px-2 py-1 text-sm whitespace-nowrap text-white shadow-lg group-hover:block"
+				>
+					Settings
 				</div>
 			</button>
 
@@ -536,6 +572,64 @@
 						{/each}
 					</div>
 				{/if}
+			</div>
+		</div>
+
+		<!-- Settings Panel -->
+		<div class="flex h-full w-96 flex-col {activePanel === 'settings' ? '' : 'hidden'}">
+			<div class="flex h-14 items-center justify-between border-b border-gray-200 px-4">
+				<h2 class="font-semibold text-gray-900">Settings</h2>
+				<button
+					onclick={() => togglePanel('settings')}
+					class="cursor-pointer rounded p-1 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+					aria-label="Close panel"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-5 w-5"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<line x1="18" y1="6" x2="6" y2="18" />
+						<line x1="6" y1="6" x2="18" y2="18" />
+					</svg>
+				</button>
+			</div>
+			<div class="flex-1 overflow-y-auto p-4">
+				<!-- Unit System Setting -->
+				<div class="space-y-4">
+					<div>
+						<h3 class="mb-2 text-sm font-medium text-gray-700">Unit System</h3>
+						<p class="mb-3 text-xs text-gray-500">Choose how measurements are displayed</p>
+						<div class="flex gap-2">
+							<button
+								onclick={() => onUnitSystemChange('metric')}
+								class="flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors {unitSystem ===
+								'metric'
+									? 'bg-blue-600 text-white'
+									: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+							>
+								Metric
+							</button>
+							<button
+								onclick={() => onUnitSystemChange('imperial')}
+								class="flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors {unitSystem ===
+								'imperial'
+									? 'bg-blue-600 text-white'
+									: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+							>
+								Imperial
+							</button>
+						</div>
+						<p class="mt-2 text-xs text-gray-400">
+							{unitSystem === 'metric' ? 'Meters (m)' : 'Feet and inches (ft-in)'}
+						</p>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>

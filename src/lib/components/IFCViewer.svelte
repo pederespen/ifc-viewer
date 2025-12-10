@@ -19,7 +19,7 @@
 		fitCameraToModel,
 		type CameraState
 	} from '$lib/utils/camera';
-	import { MeasurementTool, type MeasurementData } from '$lib/utils/measurement';
+	import { MeasurementTool, type MeasurementData, type UnitSystem } from '$lib/utils/measurement';
 	import type {
 		FragmentsManager,
 		FragmentGroup,
@@ -46,6 +46,7 @@
 	let ifcTree: TreeNode[] = $state([]);
 	let measurementEnabled = $state(false);
 	let measurements: MeasurementData[] = $state([]);
+	let unitSystem: UnitSystem = $state('metric');
 	let compassAxes: CompassAxes = $state({
 		x: { x: 20, y: 0, z: 0 },
 		y: { x: 0, y: -20, z: 0 },
@@ -157,6 +158,13 @@
 
 	function handleClearMeasurements() {
 		measurementTool?.clearAllMeasurements();
+	}
+
+	function handleUnitSystemChange(newUnitSystem: UnitSystem) {
+		unitSystem = newUnitSystem;
+		if (measurementTool) {
+			measurementTool.unitSystem = newUnitSystem;
+		}
 	}
 
 	async function setupFragments() {
@@ -410,6 +418,8 @@
 			{measurements}
 			onDeleteMeasurement={handleDeleteMeasurement}
 			onClearMeasurements={handleClearMeasurements}
+			{unitSystem}
+			onUnitSystemChange={handleUnitSystemChange}
 		/>
 
 		<!-- Viewer Area -->

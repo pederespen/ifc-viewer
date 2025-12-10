@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import * as OBC from '@thatopen/components';
 
+export type UnitSystem = 'metric' | 'imperial';
+
 export interface RaycastResult {
 	point: THREE.Vector3;
 	normal: THREE.Vector3;
@@ -38,6 +40,7 @@ export class MeasurementTool {
 	private measurements: Measurement[] = [];
 	private nextMeasurementId = 1;
 	private labelContainer: HTMLDivElement;
+	private _unitSystem: UnitSystem = 'metric';
 
 	// Callbacks
 	public onEnabledChange?: (enabled: boolean) => void;
@@ -259,7 +262,37 @@ export class MeasurementTool {
 	}
 
 	private formatDistance(distance: number): string {
+		if (this._unitSystem === 'imperial') {
+			// Convert meters to feet
+			const totalFeet = distance * 3.28084;
+			const feet = Math.floor(totalFeet);
+			const inches = Math.round((totalFeet - feet) * 12);
+
+			if (inches === 12) {
+				return `${feet + 1}' 0"`;
+			}
+			return `${feet}' ${inches}"`;
+		}
 		return `${distance.toFixed(2)} m`;
+	}
+
+	get unitSystem(): UnitSystem {
+		return this._unitSystem;
+	}
+
+	set unitSystem(value: UnitSystem) {
+		if (this._unitSystem !== value) {
+			this._unitSystem = value;
+			// Update all existing measurement labels
+			this.updateAllLabels();
+			this.notifyMeasurementsChange();
+		}
+	}
+
+	private updateAllLabels(): void {
+		for (const measurement of this.measurements) {
+			measurement.label.textContent = this.formatDistance(measurement.distance);
+		}
 	}
 
 	private notifyMeasurementsChange(): void {
