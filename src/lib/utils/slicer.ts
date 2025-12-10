@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import * as OBC from '@thatopen/components';
+import { COLORS, MATERIAL_OPACITY } from '$lib/constants/colors';
 
 export interface SliceData {
 	id: string;
@@ -26,8 +27,8 @@ export class SlicerTool {
 
 		// Setup clipper
 		this.clipper.setup({
-			color: new THREE.Color(0x1e40af), // Same blue as measurement tool
-			opacity: 0.3,
+			color: new THREE.Color(COLORS.slicer),
+			opacity: MATERIAL_OPACITY.slicer,
 			size: 5
 		});
 

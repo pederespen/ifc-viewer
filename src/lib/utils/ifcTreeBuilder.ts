@@ -1,10 +1,7 @@
 import * as OBC from '@thatopen/components';
-import type {
-	FragmentsManager,
-	FragmentGroup,
-	SpatialStructureItem,
-	ItemData
-} from '$lib/types/viewer';
+import type { FragmentGroup, SpatialStructureItem, ItemData } from '$lib/types/viewer';
+import { extractValue } from './shared';
+import { FragmentsHelper } from './fragments';
 
 export interface TreeNode {
 	id: string;
@@ -30,18 +27,6 @@ export function collectExpressIDs(node: TreeNode): number[] {
 }
 
 /**
- * Extract value from IFC property (handles {value, type} objects)
- */
-function getValue(val: unknown): string | null {
-	if (!val) return null;
-	if (typeof val === 'string') return val;
-	if (typeof val === 'object' && val !== null && 'value' in val) {
-		return (val as { value: string }).value;
-	}
-	return null;
-}
-
-/**
  * Build IFC tree structure from loaded model
  */
 export async function buildIFCTree(
@@ -53,7 +38,7 @@ export async function buildIFCTree(
 	}
 
 	try {
-		const fragments = components.get(OBC.FragmentsManager) as unknown as FragmentsManager;
+		const fragments = FragmentsHelper.get(components);
 
 		if (!fragments.list || fragments.list.size === 0) {
 			return [];
@@ -140,12 +125,12 @@ async function buildSpatialTree(
 				if (itemsData?.length) {
 					const itemData = itemsData[0] as ItemData;
 					elementName =
-						getValue(itemData.Name) ||
-						getValue(itemData.name) ||
-						getValue(itemData.LongName) ||
-						getValue(itemData.longName) ||
+						extractValue(itemData.Name) ||
+						extractValue(itemData.name) ||
+						extractValue(itemData.LongName) ||
+						extractValue(itemData.longName) ||
 						`${elementType} ${spatialItem.localId}`;
-					elementType = getValue(itemData._category) || spatialItem.category || 'Element';
+					elementType = extractValue(itemData._category) || spatialItem.category || 'Element';
 				}
 			} catch {
 				// Use default names
@@ -230,7 +215,10 @@ async function buildSimpleTree(model: FragmentGroup, parentChildren: TreeNode[])
 						const localId = idsToFetch[i];
 						items.push({
 							id: `${model.modelId || 'model'}-${localId}`,
-							name: getValue(itemData.Name) || getValue(itemData.name) || `${category} ${localId}`,
+							name:
+								extractValue(itemData.Name) ||
+								extractValue(itemData.name) ||
+								`${category} ${localId}`,
 							type: category,
 							expressID: localId,
 							visible: true,

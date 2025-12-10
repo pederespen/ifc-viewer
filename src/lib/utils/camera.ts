@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as OBC from '@thatopen/components';
-import type { CompassAxes, FragmentsManager, FragmentGroup } from '$lib/types/viewer';
+import type { CompassAxes } from '$lib/types/viewer';
+import { FragmentsHelper } from './fragments';
 
 export interface CameraState {
 	initialPosition: THREE.Vector3 | null;
@@ -99,9 +100,7 @@ export async function fitCameraToModel(
 		let foundObjects = false;
 
 		// Try fragments manager first
-		const fragments = components.get(OBC.FragmentsManager) as unknown as FragmentsManager;
-		for (const [, fragmentGroup] of fragments.list) {
-			const group = fragmentGroup as FragmentGroup;
+		for (const { group } of FragmentsHelper.iterateGroups(components)) {
 			if (group?.object) {
 				const groupBox = new THREE.Box3().setFromObject(group.object);
 				bbox.union(groupBox);

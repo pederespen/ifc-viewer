@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import * as OBC from '@thatopen/components';
+import { MEASUREMENT_SIZES } from '$lib/constants/sizes';
 
 export type UnitSystem = 'metric' | 'imperial';
 
@@ -118,7 +119,7 @@ export class MeasurementTool {
 		});
 
 		const sprite = new THREE.Sprite(material);
-		sprite.scale.set(0.1, 0.1, 1);
+		sprite.scale.set(MEASUREMENT_SIZES.markerRadius, MEASUREMENT_SIZES.markerRadius, 1);
 		sprite.renderOrder = 999;
 		sprite.visible = false;
 
@@ -163,7 +164,7 @@ export class MeasurementTool {
 
 		const sprite = new THREE.Sprite(material);
 		sprite.position.copy(position);
-		sprite.scale.set(0.1, 0.1, 1);
+		sprite.scale.set(MEASUREMENT_SIZES.markerRadius, MEASUREMENT_SIZES.markerRadius, 1);
 		sprite.renderOrder = 999;
 
 		this.world.scene.three.add(sprite);
@@ -172,7 +173,13 @@ export class MeasurementTool {
 
 	private createPreviewLine(start: THREE.Vector3): void {
 		// Create cylinder for thick preview line
-		const geometry = new THREE.CylinderGeometry(0.015, 0.015, 0.001, 8, 1);
+		const geometry = new THREE.CylinderGeometry(
+			MEASUREMENT_SIZES.lineThickness,
+			MEASUREMENT_SIZES.lineThickness,
+			0.001,
+			8,
+			1
+		);
 		const material = new THREE.MeshBasicMaterial({
 			color: 0x1e40af,
 			depthTest: false
@@ -195,7 +202,13 @@ export class MeasurementTool {
 		// Update geometry with new length
 		const mesh = this.previewLine as unknown as THREE.Mesh;
 		mesh.geometry.dispose();
-		mesh.geometry = new THREE.CylinderGeometry(0.015, 0.015, length, 8, 1);
+		mesh.geometry = new THREE.CylinderGeometry(
+			MEASUREMENT_SIZES.lineThickness,
+			MEASUREMENT_SIZES.lineThickness,
+			length,
+			8,
+			1
+		);
 
 		// Position at midpoint
 		const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
@@ -211,7 +224,13 @@ export class MeasurementTool {
 		const length = direction.length();
 
 		// CylinderGeometry is oriented along Y axis, so we need to rotate it
-		const geometry = new THREE.CylinderGeometry(0.015, 0.015, length, 8, 1);
+		const geometry = new THREE.CylinderGeometry(
+			MEASUREMENT_SIZES.lineThickness,
+			MEASUREMENT_SIZES.lineThickness,
+			length,
+			8,
+			1
+		);
 		const material = new THREE.MeshBasicMaterial({
 			color: 0x1e40af,
 			depthTest: false

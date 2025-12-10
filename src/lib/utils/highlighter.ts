@@ -1,12 +1,9 @@
 import * as THREE from 'three';
 import * as OBC from '@thatopen/components';
 import * as OBCF from '@thatopen/components-front';
-import type {
-	ModelIdMap,
-	SelectedElement,
-	FragmentsManager,
-	FragmentGroup
-} from '$lib/types/viewer';
+import type { ModelIdMap, SelectedElement, FragmentGroup } from '$lib/types/viewer';
+import { COLORS, MATERIAL_OPACITY } from '$lib/constants/colors';
+import { FragmentsHelper } from './fragments';
 
 export interface HighlightStyle {
 	color: THREE.Color;
@@ -19,30 +16,30 @@ export interface HighlightStyle {
 export const HIGHLIGHT_STYLES = {
 	// Solid orange for model double-click selection
 	select: {
-		color: new THREE.Color(0xf59e0b),
+		color: new THREE.Color(COLORS.select),
 		opacity: 1,
 		transparent: false,
 		renderedFaces: 0
 	},
 	// Transparent x-ray blue for tree selection
 	treeSelect: {
-		color: new THREE.Color(0x3b82f6),
-		opacity: 0.4,
+		color: new THREE.Color(COLORS.treeSelect),
+		opacity: MATERIAL_OPACITY.hover,
 		transparent: true,
 		depthTest: false,
 		renderedFaces: 1
 	},
 	// Solid light blue for 3D viewer hover
 	hover: {
-		color: new THREE.Color(0x93c5fd),
+		color: new THREE.Color(COLORS.hover),
 		opacity: 1,
 		transparent: false,
 		renderedFaces: 0
 	},
 	// Transparent x-ray indigo for tree hover
 	treeHover: {
-		color: new THREE.Color(0x6366f1),
-		opacity: 0.4,
+		color: new THREE.Color(COLORS.treeHover),
+		opacity: MATERIAL_OPACITY.hover,
 		transparent: true,
 		renderedFaces: 1,
 		depthTest: false
@@ -118,7 +115,7 @@ async function getSelectedElementData(
 		}
 
 		const fragmentID = Array.from(fragmentIdsSet)[0];
-		const fragments = components.get(OBC.FragmentsManager) as unknown as FragmentsManager;
+		const fragments = FragmentsHelper.get(components);
 		const fragmentGroup = fragments.list.get?.(modelID) as FragmentGroup | undefined;
 
 		if (fragmentGroup?.getItemsData) {
@@ -187,6 +184,5 @@ export function highlightByID(
  * Get the first model name from fragments
  */
 export function getFirstModelName(components: OBC.Components): string | undefined {
-	const fragments = components.get(OBC.FragmentsManager) as unknown as FragmentsManager;
-	return fragments.list.keys().next().value;
+	return FragmentsHelper.getFirstModelName(components);
 }

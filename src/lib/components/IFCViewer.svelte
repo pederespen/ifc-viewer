@@ -21,13 +21,10 @@
 	} from '$lib/utils/camera';
 	import { MeasurementTool, type MeasurementData, type UnitSystem } from '$lib/utils/measurement';
 	import { SlicerTool, type SliceData } from '$lib/utils/slicer';
-	import type {
-		FragmentsManager,
-		FragmentGroup,
-		IFCLoader,
-		SelectedElement,
-		CompassAxes
-	} from '$lib/types/viewer';
+	import type { FragmentGroup, IFCLoader, SelectedElement, CompassAxes } from '$lib/types/viewer';
+	import { FragmentsHelper } from '$lib/utils/fragments';
+	import { COLORS } from '$lib/constants/colors';
+	import { LIGHT_INTENSITY } from '$lib/constants/sizes';
 
 	// State
 	let container: HTMLDivElement;
@@ -76,9 +73,12 @@
 		world.scene = new OBC.SimpleScene(components);
 		(world.scene as OBC.SimpleScene & { setup: (_config?: Record<string, unknown>) => void }).setup(
 			{
-				backgroundColor: new THREE.Color('#ffffff'),
-				directionalLight: { intensity: 1.5, position: new THREE.Vector3(5, 10, 3) },
-				ambientLight: { intensity: 1.0 }
+				backgroundColor: new THREE.Color(COLORS.background),
+				directionalLight: {
+					intensity: LIGHT_INTENSITY.directional,
+					position: new THREE.Vector3(5, 10, 3)
+				},
+				ambientLight: { intensity: LIGHT_INTENSITY.ambient }
 			}
 		);
 
@@ -218,7 +218,7 @@
 	async function setupFragments() {
 		if (!components || !world) return;
 
-		const fragments = components.get(OBC.FragmentsManager) as unknown as FragmentsManager;
+		const fragments = FragmentsHelper.get(components);
 
 		// Initialize worker
 		try {
@@ -244,16 +244,12 @@
 			if (model.object) {
 				world!.scene.three.add(model.object);
 			}
-			(fragments as unknown as { core?: { update?: (_force: boolean) => void } }).core?.update?.(
-				true
-			);
+			FragmentsHelper.updateCore(components!);
 		});
 
 		// Update fragments on camera rest
 		world.camera.controls?.addEventListener('rest', () => {
-			(fragments as unknown as { core?: { update?: (_force: boolean) => void } }).core?.update?.(
-				true
-			);
+			FragmentsHelper.updateCore(components!);
 		});
 	}
 
@@ -421,10 +417,9 @@
 		ifcTree = [...ifcTree]; // Trigger reactivity
 
 		const ids = collectExpressIDs(item);
-		const fragments = components.get(OBC.FragmentsManager) as unknown as FragmentsManager;
 
-		for (const [, fragmentGroup] of fragments.list) {
-			(fragmentGroup as FragmentGroup).setVisible?.(ids, newVisible);
+		for (const { group } of FragmentsHelper.iterateGroups(components)) {
+			group.setVisible?.(ids, newVisible);
 		}
 	}
 </script>
