@@ -96,11 +96,17 @@ export class SlicerTool {
 	}
 
 	deleteSlice(id: string): void {
-		this.clipper.list.delete(id);
+		const plane = this.clipper.list.get(id);
+		if (plane) {
+			plane.dispose();
+			this.clipper.list.delete(id);
+			this.notifySlicesChange();
+		}
 	}
 
 	clearAllSlices(): void {
 		this.clipper.deleteAll();
+		this.notifySlicesChange();
 	}
 
 	getSlices(): SliceData[] {
