@@ -8,21 +8,21 @@
 		tree: TreeNode[];
 		hasModel: boolean;
 		selectedElement: Record<string, unknown> | null;
-		onTreeItemClick: (node: TreeNode) => void;
-		onTreeItemHover: (node: TreeNode | null) => void;
-		onVisibilityToggle: (node: TreeNode) => void;
+		onTreeItemClick: (_node: TreeNode) => void;
+		onTreeItemHover: (_node: TreeNode | null) => void;
+		onVisibilityToggle: (_node: TreeNode) => void;
 		onClearSelection: () => void;
 		measurementEnabled: boolean;
 		onMeasurementToggle: () => void;
 		measurements: MeasurementData[];
-		onDeleteMeasurement: (id: number) => void;
+		onDeleteMeasurement: (_id: number) => void;
 		onClearMeasurements: () => void;
 		unitSystem: UnitSystem;
-		onUnitSystemChange: (unit: UnitSystem) => void;
+		onUnitSystemChange: (_unit: UnitSystem) => void;
 		slicerEnabled: boolean;
 		onSlicerToggle: () => void;
 		slices: SliceData[];
-		onDeleteSlice: (id: string) => void;
+		onDeleteSlice: (_id: string) => void;
 		onClearSlices: () => void;
 	}
 

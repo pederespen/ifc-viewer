@@ -4,9 +4,9 @@
 	interface Props {
 		tree: TreeNode[];
 		hasModel: boolean;
-		onItemClick: (node: TreeNode) => void;
-		onItemHover: (node: TreeNode | null) => void;
-		onVisibilityToggle: (node: TreeNode) => void;
+		onItemClick: (_node: TreeNode) => void;
+		onItemHover: (_node: TreeNode | null) => void;
+		onVisibilityToggle: (_node: TreeNode) => void;
 	}
 
 	let { tree, hasModel, onItemClick, onItemHover, onVisibilityToggle }: Props = $props();

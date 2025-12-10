@@ -74,11 +74,13 @@
 
 		// Setup scene
 		world.scene = new OBC.SimpleScene(components);
-		(world.scene as OBC.SimpleScene & { setup: (config?: Record<string, unknown>) => void }).setup({
-			backgroundColor: new THREE.Color('#ffffff'),
-			directionalLight: { intensity: 1.5, position: new THREE.Vector3(5, 10, 3) },
-			ambientLight: { intensity: 1.0 }
-		});
+		(world.scene as OBC.SimpleScene & { setup: (_config?: Record<string, unknown>) => void }).setup(
+			{
+				backgroundColor: new THREE.Color('#ffffff'),
+				directionalLight: { intensity: 1.5, position: new THREE.Vector3(5, 10, 3) },
+				ambientLight: { intensity: 1.0 }
+			}
+		);
 
 		// Setup renderer and camera
 		world.renderer = new OBC.SimpleRenderer(components, container);
@@ -234,7 +236,7 @@
 
 		// Handle model loading
 		const list = fragments.list as unknown as {
-			onItemSet?: { add?: (fn: (e: { value: FragmentGroup }) => void) => void };
+			onItemSet?: { add?: (_fn: (_e: { value: FragmentGroup }) => void) => void };
 		};
 		list.onItemSet?.add?.((event) => {
 			const model = event.value;
@@ -242,14 +244,14 @@
 			if (model.object) {
 				world!.scene.three.add(model.object);
 			}
-			(fragments as unknown as { core?: { update?: (force: boolean) => void } }).core?.update?.(
+			(fragments as unknown as { core?: { update?: (_force: boolean) => void } }).core?.update?.(
 				true
 			);
 		});
 
 		// Update fragments on camera rest
 		world.camera.controls?.addEventListener('rest', () => {
-			(fragments as unknown as { core?: { update?: (force: boolean) => void } }).core?.update?.(
+			(fragments as unknown as { core?: { update?: (_force: boolean) => void } }).core?.update?.(
 				true
 			);
 		});
