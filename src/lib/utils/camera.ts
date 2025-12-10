@@ -36,11 +36,7 @@ export function calculateCompassAxes(camera: THREE.Camera): CompassAxes {
 /**
  * Reset camera to initial position and target
  */
-export function resetView(
-	world: OBC.World,
-	state: CameraState,
-	onUpdate?: () => void
-): void {
+export function resetView(world: OBC.World, state: CameraState, onUpdate?: () => void): void {
 	if (!world.camera?.controls || !state.initialPosition || !state.initialTarget) {
 		console.warn('Reset view: initial camera position not set');
 		return;
@@ -62,11 +58,7 @@ export function resetView(
 /**
  * Recenter camera while keeping current rotation
  */
-export function recenterView(
-	world: OBC.World,
-	state: CameraState,
-	onUpdate?: () => void
-): void {
+export function recenterView(world: OBC.World, state: CameraState, onUpdate?: () => void): void {
 	if (!world.camera?.controls || !state.initialTarget || !state.initialPosition) {
 		console.warn('Recenter view: initial camera target not set');
 		return;

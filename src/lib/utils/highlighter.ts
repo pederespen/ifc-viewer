@@ -1,7 +1,12 @@
 import * as THREE from 'three';
 import * as OBC from '@thatopen/components';
 import * as OBCF from '@thatopen/components-front';
-import type { ModelIdMap, SelectedElement, FragmentsManager, FragmentGroup } from '$lib/types/viewer';
+import type {
+	ModelIdMap,
+	SelectedElement,
+	FragmentsManager,
+	FragmentGroup
+} from '$lib/types/viewer';
 
 export interface HighlightStyle {
 	color: THREE.Color;
@@ -80,7 +85,9 @@ export function setupHighlighter(
 	}
 
 	// Handle selection events
-	const events = highlighter as unknown as { events: { select: { onHighlight: { add: (fn: (map: ModelIdMap) => void) => void } } } };
+	const events = highlighter as unknown as {
+		events: { select: { onHighlight: { add: (fn: (map: ModelIdMap) => void) => void } } };
+	};
 	events.events.select.onHighlight.add(async (modelIdMap: ModelIdMap) => {
 		const element = await getSelectedElementData(components, modelIdMap);
 		onSelect(element);

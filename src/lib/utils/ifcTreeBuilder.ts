@@ -1,5 +1,10 @@
 import * as OBC from '@thatopen/components';
-import type { FragmentsManager, FragmentGroup, SpatialStructureItem, ItemData } from '$lib/types/viewer';
+import type {
+	FragmentsManager,
+	FragmentGroup,
+	SpatialStructureItem,
+	ItemData
+} from '$lib/types/viewer';
 
 export interface TreeNode {
 	id: string;
@@ -81,13 +86,15 @@ export async function buildIFCTree(
 					name: model.name || 'IFC Model',
 					type: 'Model',
 					visible: true,
-					children: [{
-						id: `${modelID}-error`,
-						name: 'Error loading structure',
-						type: 'Error',
-						visible: true,
-						children: []
-					}]
+					children: [
+						{
+							id: `${modelID}-error`,
+							name: 'Error loading structure',
+							type: 'Error',
+							visible: true,
+							children: []
+						}
+					]
 				});
 			}
 		}
@@ -171,9 +178,26 @@ async function buildSpatialTree(
  */
 async function buildSimpleTree(model: FragmentGroup, parentChildren: TreeNode[]): Promise<void> {
 	const commonTypes = [
-		/WALL/, /WINDOW/, /DOOR/, /SLAB/, /BEAM/, /COLUMN/, /SPACE/,
-		/BUILDING/, /STOREY/, /SITE/, /PROJECT/, /ROOF/, /STAIR/,
-		/RAILING/, /FURNISHING/, /PLATE/, /MEMBER/, /COVERING/, /FOOTING/, /PILE/
+		/WALL/,
+		/WINDOW/,
+		/DOOR/,
+		/SLAB/,
+		/BEAM/,
+		/COLUMN/,
+		/SPACE/,
+		/BUILDING/,
+		/STOREY/,
+		/SITE/,
+		/PROJECT/,
+		/ROOF/,
+		/STAIR/,
+		/RAILING/,
+		/FURNISHING/,
+		/PLATE/,
+		/MEMBER/,
+		/COVERING/,
+		/FOOTING/,
+		/PILE/
 	];
 
 	try {

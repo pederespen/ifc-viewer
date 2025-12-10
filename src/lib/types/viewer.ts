@@ -57,11 +57,7 @@ export interface IFCLoader {
 			absolute: boolean;
 		};
 	}) => Promise<void>;
-	load?: (
-		data: Uint8Array,
-		streaming: boolean,
-		name: string
-	) => Promise<LoadedModel>;
+	load?: (data: Uint8Array, streaming: boolean, name: string) => Promise<LoadedModel>;
 }
 
 // Loaded model
@@ -101,5 +97,5 @@ export interface SelectedElement {
 	[key: string]: unknown;
 }
 
-// World type 
+// World type
 export type ViewerWorld = OBC.World;
